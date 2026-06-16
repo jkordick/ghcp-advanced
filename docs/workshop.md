@@ -1,7 +1,7 @@
 ---
 published: true
 type: workshop
-title: GitHub Copilot Advanced: Spec-Driven Development and beyond
+title: "GitHub Copilot Advanced: Spec-Driven Development and beyond"
 short_title: GHCP Advanced — SDD
 description: Learn the fundamentals of GitHub Copilot and then go deep on Spec-Driven Development (SDD), the discipline of letting specifications drive your AI-assisted code.
 level: intermediate
