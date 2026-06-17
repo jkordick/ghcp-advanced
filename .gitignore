@@ -1,0 +1,6 @@
+duck-emporium/
+.github/.specify
+.github/.vscode
+.github/agents
+.github/prompts
+specs/

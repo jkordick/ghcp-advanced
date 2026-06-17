@@ -23,7 +23,7 @@ This folder contains the user stories for the hands-on exercise in [Chapter 2](.
 
 ## Constraints (apply to ALL stories)
 
-- **Stack:** TypeScript, Node 20+, ES modules. Choose your own framework — small is fine (Fastify, Hono, Express, raw `node:http`).
+- **Stack:** TypeScript, Node 20+, ES modules. Express is the recommended framework — but Fastify, Hono, or even raw `node:http` work too.
 - **Storage:** A local JSON file or SQLite is fine. No cloud services required.
 - **Auth:** A single shared admin password from an env var for Dr. Mallard. No real user accounts for Quincy.
 - **Payment:** **Mocked.** Never integrate a real payment provider in this workshop.
@@ -41,5 +41,6 @@ This folder contains the user stories for the hands-on exercise in [Chapter 2](.
 | 6  | `curator-add-duck`      | Curator adds a new duck            | Dr. Mallard  | Should     | Admin-only, password-protected         |
 | 7  | `duck-of-the-day`       | Daily featured duck                | Quincy       | Could      | Deterministic per day                  |
 | 8  | `personality-quiz`      | "Which duck are you?" quiz         | Quincy       | Could      | The funny one. Don't underestimate it. |
+| 9  | `web-frontend`          | Web frontend                       | Quincy       | Should     | SPA over existing API, no build step   |
 
 🦆

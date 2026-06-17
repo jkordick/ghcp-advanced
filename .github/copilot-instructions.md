@@ -6,7 +6,7 @@ This is a documentation/workshop repository. The deliverable is `docs/workshop.m
 
 - Workshop content lives in `docs/workshop.md` and follows the MoaW frontmatter schema (`type: workshop`, `level`, `navigation_levels`, etc.).
 - Use `##` and `###` for the side-bar navigation. Keep `navigation_levels: 3`.
-- Code samples are TypeScript / Node 20+ with ES modules and `node:`-prefixed imports.
+- Code samples are TypeScript / Node 20+ with ES modules, Express, and `node:`-prefixed imports.
 - Shell examples use POSIX syntax; provide PowerShell only when behavior differs.
 - Keep callouts in MoaW format: `<div class="info|tip|warning" data-title="…"> > … </div>`.
 - Never inline secrets, tokens or personal data in examples.
