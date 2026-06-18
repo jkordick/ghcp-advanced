@@ -2,7 +2,7 @@
 published: true
 type: workshop
 title: "GitHub Copilot Advanced: Spec-Driven Development and beyond"
-short_title: GHCP Advanced — SDD
+short_title: "GitHub Copilot Advanced: SDD and beyond"
 description: Learn the fundamentals of GitHub Copilot and then go deep on Spec-Driven Development (SDD), the discipline of letting specifications drive your AI-assisted code.
 level: intermediate
 authors:
@@ -17,7 +17,7 @@ navigation_numbering: true
 
 # GitHub Copilot Advanced: Spec-Driven Development and beyond
 
-*Version 0.5 — June 2026*
+*Version 1.0 — June 2026*
 
 Welcome! This workshop has the following parts:
 
@@ -63,7 +63,7 @@ You need the following before starting:
 - **Individual Free/Pro:** sign up at [github.com/github-copilot/signup](https://github.com/github-copilot/signup).
 - **Through your organization:** request access at [github.com/settings/copilot](https://github.com/settings/copilot).
 
-<div class="info" data-title="Enterprise note">
+<div class="info" data-title="Enterprise organization check">
 
 > Some features in this workshop (Agent mode, MCP, the GitHub Copilot CLI, spec-kit) may be restricted by your organization's policy. The workshop is structured so that each section is **independently useful**; skip what you cannot use.
 
@@ -453,9 +453,15 @@ Everything above works in the GitHub Copilot CLI too. Same prompt files, same in
 
 ---
 
-# Chapter 3 (optional) — Spec Kit by GitHub
+# Chapter 3 spec-kit by GitHub
 
 [spec-kit](https://github.com/github/spec-kit) is an open-source toolkit by the GitHub team that formalizes and extends the loop you just did by hand. As it is an open-source project it can not only be used in combination with GitHub Copilot but [many more agentic AIs for coding](https://github.github.io/spec-kit/reference/integrations.html). So if you now want to give it a try with Claude, Cursor or Codex, this is the moment.
+
+<div class="info" data-title="If you want to learn more">
+
+> https://developer.microsoft.com/blog/spec-driven-development-ai-native-engineering
+
+</div>
 
 It ships a `specify` CLI that scaffolds the `specs/` layout, prompt files and chatmodes for you, and integrates with several AI agents.
 

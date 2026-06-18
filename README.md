@@ -10,9 +10,11 @@ Or read the raw markdown: [`docs/workshop.md`](docs/workshop.md).
 
 ## What you'll learn
 
-1. **Getting started with GitHub Copilot** — completions, Chat, Agent mode, the Copilot CLI, custom instructions, prompt files, chatmodes and MCP servers. A single broad chapter for newcomers.
-2. **Spec-Driven Development (SDD)** — the main focus. Make specifications, not vibes, drive what Copilot builds. End-to-end TypeScript/Node example.
-3. **(Optional) Spec Kit** — GitHub's open-source SDD toolkit, for teams allowed to install it.
+1. **Getting started with GitHub Copilot**: completions, Chat, custom agents, the Copilot CLI, custom instructions, prompt files, skills and MCP servers. A single broad chapter for newcomers.
+2. **Spec-Driven Development (SDD)**: Learn about SDD. Make specifications, not vibes, drive what Copilot builds. End-to-end TypeScript/Node example.
+3. **spec-kit**: an open-source toolkit by the GitHub team that formalizes and extends the loop you just did by hand. It can be used in combination with GitHub Copilot but also many more agentic AIs for coding.
+4. (soon) **Squad**: an open-source framework for orchestrating multi-agent development teams on top of GitHub Copilot.
+5. (soon) **SDD for app modernization**: a dedicated chapter on how to use SDD to modernize legacy apps.
 
 ## Pre-reqs
 
@@ -21,7 +23,7 @@ Or read the raw markdown: [`docs/workshop.md`](docs/workshop.md).
 - Node.js 20+
 - GitHub CLI (`gh`) and the `gh copilot` extension
 
-See [the Pre-requisites section of the workshop](docs/workshop.md#pre-requisites) for details.
+See [the Pre-requisites section of the workshop](docs/workshop.md#pre-requisites) for more details.
 
 ## License
 
@@ -34,6 +36,6 @@ Inspired by the excellent [GitHub Copilot HoL by @Philess](https://moaw.dev/work
 
 ### Julia's to do list
 - optional: before creating the spec, ask GHCP to break down the user-stories into reasonable sized github issues, and then generate the spec based on the issues; would need github access + github mcp
-- add https://developer.microsoft.com/blog/spec-driven-development-ai-native-engineering to spec-kit
 - add spec-kit for app mod section
+- add squad section
 - save the world
