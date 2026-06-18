@@ -515,6 +515,10 @@ A dedicated chapter on [squad](https://github.com/bradygaster/squad): an open-so
 
 ---
 
+# Chapter 5 (coming soon) - SDD for app modernization
+
+---
+
 # Wrap-up
 
 You (hopefully :D) have learned:
