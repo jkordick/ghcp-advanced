@@ -3,3 +3,5 @@ duck-emporium/
 .github/.vscode
 .github/agents
 specs/
+
+.DS_Store
