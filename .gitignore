@@ -1,7 +1,22 @@
-duck-emporium/
 .github/.specify
 .github/.vscode
 .github/agents
 specs/
 
+.github/prompts/speckit.*.md
+
+.specify
+.vscode
+
 .DS_Store
+
+# Node / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+duck-emporium/data/catalog.json

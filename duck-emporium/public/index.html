@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rubber Duck Emporium</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%86%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#app">Skip to content</a>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a href="#/" class="brand" aria-label="Rubber Duck Emporium — home">
+          <span class="brand__mark" aria-hidden="true">🦆</span>
+          <span class="brand__text">
+            <span class="brand__name">Rubber Duck</span>
+            <span class="brand__sub">Emporium</span>
+          </span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="#/" data-nav>Catalog</a>
+          <a href="#/dotd" data-nav>Duck of the Day</a>
+          <a href="#/quiz" data-nav>Quiz</a>
+          <a href="#/cart" class="cart-link" data-nav>
+            <span aria-hidden="true">🛒</span>
+            <span>Cart</span>
+            <span id="cart-badge" class="cart-badge" aria-live="polite">0</span>
+          </a>
+        </nav>
+      </div>
+    </header>
+    <main id="app" class="app-main">
+      <p class="loading">Loading…</p>
+    </main>
+    <footer class="site-footer">
+      <p>For demonstration only. No real ducks were harmed.</p>
+    </footer>
+    <script type="module" src="/app/main.js"></script>
+  </body>
+</html>

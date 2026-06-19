@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "ducks": [
+    {
+      "id": "socrates-duck",
+      "name": "Socrates Duck",
+      "category": "Philosopher",
+      "priceCents": 1499,
+      "tagline": "I know that I quack nothing.",
+      "description": "A contemplative companion for anyone who would rather ask the right question than answer the wrong one. Hand-painted with a slightly furrowed brow and a beard that suggests deep thoughts about the nature of the bath.",
+      "personality": ["stoic", "inquisitive", "patient"]
+    },
+    {
+      "id": "nietzsche-duck",
+      "name": "Nietzsche Duck",
+      "category": "Philosopher",
+      "priceCents": 1599,
+      "tagline": "Quack is dead. And we have killed him.",
+      "description": "An intense, slightly brooding duck for those long afternoons spent staring into the abyss (or the soap dish). Will not flinch when you cancel plans. Comes with a tiny moustache.",
+      "personality": ["intense", "iconoclastic", "lonely"]
+    },
+    {
+      "id": "rubber-debug-duck",
+      "name": "Rubber Debug Duck",
+      "category": "Debugging",
+      "priceCents": 999,
+      "tagline": "Have you tried explaining it to me?",
+      "description": "The classic. Sits patiently on your desk while you walk through your code line by line. Many developers report that the bug becomes obvious somewhere around the third sentence.",
+      "personality": ["patient", "attentive", "non-judgmental"]
+    },
+    {
+      "id": "stack-trace-duck",
+      "name": "Stack Trace Duck",
+      "category": "Debugging",
+      "priceCents": 1099,
+      "tagline": "Have you read the error message?",
+      "description": "A slightly more confrontational debugging companion, for those moments when you need to be reminded that the answer is, in fact, in line 47. Wears tiny glasses.",
+      "personality": ["direct", "literal", "observant"]
+    },
+    {
+      "id": "captain-quack",
+      "name": "Captain Quack",
+      "category": "Maritime",
+      "priceCents": 1899,
+      "tagline": "Arr, set sail for the soap dish!",
+      "description": "A weathered sea captain with a tiny tricorne hat and a stern look that suggests it has seen things in the tub that you would not believe.",
+      "personality": ["adventurous", "weathered", "commanding"]
+    },
+    {
+      "id": "first-mate-mallard",
+      "name": "First Mate Mallard",
+      "category": "Maritime",
+      "priceCents": 1399,
+      "tagline": "Aye aye, captain.",
+      "description": "Loyal, dependable, and ready to take a watch at any hour. Pairs well with Captain Quack for those who need a full bath-time crew.",
+      "personality": ["loyal", "diligent", "cheerful"]
+    },
+    {
+      "id": "zen-master-duck",
+      "name": "Zen Master Duck",
+      "category": "Wellness",
+      "priceCents": 1799,
+      "tagline": "Be the duck. Float, do not flap.",
+      "description": "A serene, half-lidded duck who reminds you to breathe. Excellent for meditation, deep work sessions, or convincing yourself that the deadline is, in fact, manageable.",
+      "personality": ["calm", "centred", "gentle"]
+    },
+    {
+      "id": "bath-time-bliss-duck",
+      "name": "Bath Time Bliss Duck",
+      "category": "Wellness",
+      "priceCents": 1299,
+      "tagline": "Relax. The water is fine.",
+      "description": "Soft, smiling, and faintly scented with lavender. The duck equivalent of a warm towel.",
+      "personality": ["soothing", "warm", "soft"]
+    },
+    {
+      "id": "mindful-meditation-duck",
+      "name": "Mindful Meditation Duck",
+      "category": "Wellness",
+      "priceCents": 1599,
+      "tagline": "Notice the quack. Then let it go.",
+      "description": "Sits in a tiny lotus pose. Helpful for sprint retrospectives and post-incident reviews alike.",
+      "personality": ["mindful", "patient", "grounded"]
+    },
+    {
+      "id": "golden-anniversary-duck",
+      "name": "Golden Anniversary Duck",
+      "category": "Limited Edition",
+      "priceCents": 4999,
+      "tagline": "Twenty-five years of quack.",
+      "description": "A heritage piece, finished in 24-karat-look gold leaf. Only available while supplies last. Comes with a tiny certificate of authenticity that no court would accept.",
+      "personality": ["regal", "rare", "shiny"]
+    },
+    {
+      "id": "galaxy-edition-duck",
+      "name": "Galaxy Edition Duck",
+      "category": "Limited Edition",
+      "priceCents": 3499,
+      "tagline": "A duck for the cosmos.",
+      "description": "Hand-painted with swirling nebulae and a faint dusting of glitter. Glows briefly under UV light. The kind of duck that makes you stop and stare into the middle distance.",
+      "personality": ["mysterious", "iridescent", "otherworldly"]
+    },
+    {
+      "id": "pirate-captain-plunder",
+      "name": "Pirate Captain Plunder",
+      "category": "Maritime",
+      "priceCents": 1699,
+      "tagline": "Yo ho ho and a bottle of bubbles.",
+      "description": "A rakish pirate duck with an eyepatch, a tiny cutlass, and a parrot that is, on closer inspection, also a duck.",
+      "personality": ["roguish", "cheerful", "treacherous"]
+    }
+  ]
+}

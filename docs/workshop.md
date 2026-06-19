@@ -518,7 +518,7 @@ In GitHub Copilot Chat:
 
 </div>
 
-Compare what spec-kit does and what it generates against the hand-rolled prompts from Chapter 2. You will recognize every step — spec-kit just removes the boilerplate.
+Compare what spec-kit does and what it generates against the hand-rolled prompts from Chapter 2. You will recognize every step, spec-kit just removes the boilerplate.
 
 ---
 
@@ -538,9 +538,15 @@ A dedicated chapter on [squad](https://github.com/bradygaster/squad): an open-so
 
 # Chapter 7 (coming soon) - Agentic Workflows
 
---
+---
 
 # Chapter 8 (coming soon) - GitHub Copilot SDK
+
+---
+
+# Chapter 9 (coming soon) - Security, Sandboxing & Guardrails
+
+
 
 # Wrap-up
 
