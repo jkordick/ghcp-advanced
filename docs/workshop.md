@@ -26,6 +26,7 @@ Welcome! This workshop has the following parts:
 3. **Introduction of [spec-kit](https://github.com/github/spec-kit)** as a tool to use spec driven development conveniently with most agentic coding tools.
 4. (soon) **How to use [squad](https://github.com/bradygaster/squad)** open-source framework for orchestrating multi-agent development teams.
 5. (soon) **SDD for app modernization**: a dedicated chapter on how to use SDD to modernize legacy apps.
+6. **Context Engineering**: Theory foundations (LLMs, agents, context rot) followed by hands-on exercises adding instructions, scoped rules, and skills to a pre-built project.
 
 <div class="info" data-title="Who is this for?">
 
@@ -532,7 +533,328 @@ A dedicated chapter on [squad](https://github.com/bradygaster/squad): an open-so
 
 ---
 
-# Chapter 6 (coming soon) - Context Engineering
+# Chapter 6 — Context Engineering
+
+Before you jump in, the foundation for this chapter are the *controls* introduced in [Chapter 1](#chapter-1--getting-started-with-github-copilot): instructions, prompt files, custom agents, skills, MCP. If you are not familar with these, please check out Chapter 1. This chapter is about using controls or agentic AI **deliberately**. Context engineering is the discipline of designing what an agent knows, when it knows it, and how much of it fits in the context window.
+
+<div class="info" data-title="No hard dependency on earlier chapters">
+
+> Apart from the basics of chapter 1, this chapter is self-contained. You do **not** need to have completed any other chapters. You will work on a pre-built duck-emporium project that ships with this repo. You can either use your own project or checkout the [`context-engineering-start`](https://github.com/jkordick/ghcp-advanced/tree/context-engineering-start) branch. 
+
+</div>
+
+## 6.1 How agents actually work
+
+Before you can engineer context well, you need a mental model of what happens between your prompt and the agent's output.
+
+### LLMs are stateless word-probability machines
+
+An LLM does not "understand" your code. It predicts the most likely next token given everything in its **context window**; the representation of everthing provided by you in text form sent to the model on every call. That text is all it has. No memory, no hidden state, no magic. Just text in, text out.
+
+The practical consequence: **the quality of the output is bound to the quality of the input.** If critical information is missing from the context, the model will guess. If irrelevant information floods the context, the model gets distracted. 
+
+> Rule of thumb: Provide as little context as possible, but as much as required.
+
+### The agent loop
+
+When you use agentic AI (GitHub Copilot, GitHub Copilot CLI, Claude Coding Agent or any other harness), you are not talking to the LLM directly. An **agent harness** sits between you and the model:
+
+![Agent Harness](assets/agent-harness.png)
+
+The harness has two jobs:
+
+1. **Execution loop**: Determines the next step and executes it (read a file, run a command, edit code) until the LLM decides it is done.
+2. **Context management**: Assembles the context window for *every* LLM call: system prompt, tool descriptions, your instructions, conversation history, file contents, tool results.
+
+Every loop iteration grows the context. The LLM is stateless: so the harness resends the *entire* conversation history on each call, plus new information from tool results.
+
+![Agentic loops](assets/agentic-loops.png)
+
+### Context rot
+
+> Read more about context rot: https://www.producttalk.org/context-rot/
+
+As the context window fills up, two effects kick in:
+
+![Lost in the midlle](assets/cr-st50.webp)
+
+The Model do bias tokens at the beginning and the end of the context window.
+
+![Recency bias](assets/cr-gt50.webp)
+
+This is why long, unfocused agent sessions degrade in quality. Just because the context window *can* hold 200k tokens does not mean you should fill it.
+
+> Read more about context rot: https://www.producttalk.org/context-rot/
+
+# Context engineering provided by the GitHub Copilot & VS Code team
+
+The GitHub Copilot harness actively works to keep context lean. **Prompt caching** reuses model state for the repeated prompt prefix (system instructions, tool definitions, conversation history) instead of reprocessing it on every turn, because cached tokens are up to 10× cheaper. **Tool search** defers full tool schemas out of context until the model actually needs them. Only lightweight names and descriptions are loaded upfront. Together these cut ~10–18% of total tokens per session. Read the technical deep dive: [Improving token efficiency for GitHub Copilot in VS Code](https://code.visualstudio.com/blogs/2026/06/17/improving-token-efficiency-in-github-copilot).
+
+Not every task needs the strongest frontier model. **Auto mode** uses a routing model called HyDRA to match each task to the best-fit model based on reasoning depth, code complexity, and tool orchestration needs. It routes at natural cache boundaries (first turn, after compaction) to avoid breaking prompt cache. In evaluations, Auto matched the quality of always-using-the-strongest-model while saving up to 72% in cost. Read more: [Getting more from each token: How Copilot improves context handling and model routing](https://github.blog/ai-and-ml/github-copilot/getting-more-from-each-token-how-copilot-improves-context-handling-and-model-routing/).
+
+
+## 6.2 Apply project level context engineering controls
+
+Chapter 1 covered each of these controls individually. Now we apply them as **context engineering** tools. For each control: *when* it loads, *what it costs*, *what* it is, *how* to use it, and a short exercise on the duck-emporium project.
+
+### Setup
+
+```bash
+git checkout context-engineering-start
+cd duck-emporium
+```
+
+## 6.2.1 System prompt & tools
+**Loaded when:** every call (automatic)
+**Context cost:** fixed overhead
+**Use for:** you do not control this directly, used implicitly
+
+The base prompt and tool definitions injected by the harness before your conversation even starts.
+
+You cannot edit it, but you can inspect it. [Enable debug mode in VS Code to see logs.](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/troubleshoot-copilot/view-logs)
+
+---
+
+## 6.2.2 `copilot-instructions.md` / `AGENTS.md`
+**Loaded when:** every call (always-on)
+**Context cost:** proportional to file size
+**Use for:** non-negotiable project rules that apply _every_ interaction
+
+Persistent project-level instructions. `.github/copilot-instructions.md` (one per repo, at that exact path) and `AGENTS.md` (one or more, merged root-downward) are injected into every call from the agent to the LLM automatically.
+
+**Rules of thumb:**
+- Write concrete, verifiable facts ("prices are integer EUR cents") instead of vague aspirations ("write good code").
+- Give exact file paths when relevant ("import from `tests/_helpers/app.ts`"). Avoid that the agent has to re-discover things all the time again and again by itself.
+- Log recurring agent mistakes as rules. 
+- Do not use AI to generate instructions without reviewing them carefully, it creates bloat and the results may be even worse than without and instructions at all. [For more details read this paper.](https://arxiv.org/pdf/2602.11988)
+- Keep it short and revisit regularly. As your project evolves, some instructions may become obsolete or need adjustments.
+
+### Exercise 1: Create `copilot-instructions.md` for the duck-emporium project
+
+Open the GitHub Copilot chat window and type `/create-instructions`. (Or in the GitHub Copilot CLI just type: `Create me a copilot-instructions.md file for this project.`). When the agent is done, review the generated instructions. Verify its quality with the help of the rules of thumb above. 
+
+If you want to have an exmaple how a decent `copilot-instructions.md` could look like: in the project root of this repo you can find a file for the whole workshop repository.
+
+---
+
+## 6.2.3 Scoped instructions (`.instructions.md`)
+**Loaded when:** agent touches files matching the `applyTo` glob
+**Context cost:** on-demand (zero cost when not triggered)
+**Use for:** file-type-specific rules that would bloat always-on instructions (e.g. `documentation.instructions.md`)
+
+Files in `.github/instructions/*.instructions.md` with a frontmatter `applyTo` glob. They inject into context *only* when the agent reads or writes a matching file.
+
+Move detailed, file-specific conventions out of `copilot-instructions.md` into scoped files. One file per concern (testing, API routes, frontend, etc.).
+
+As `AGENTS.md` work a little different, you can create an `AGENTS.md` file in each subfolder to scope instructions to a specific part of the codebase. 
+
+<div class="tip" data-title="Good to know">
+
+> Different from `.instructions.md` files, `AGENTS.md` files are merged root-downward based on the file being edited. So if you have an `AGENTS.md` in the root and one in `frontend/`, when the agent edits a file in `frontend/` it will see the instructions from both the root and the frontend `AGENTS.md`. When it edits a file in `backend/` it will only see the instructions from the root `AGENTS.md`.
+
+</div>
+
+
+
+### Exercise 2: Create `testing.instructions.md` for the duck-emporium project
+
+Create `duck-emporium/.github/instructions/testing.instructions.md`:
+
+```markdown
+---
+description: Conventions for writing tests in the duck-emporium project.
+applyTo: "**/tests/**"
+---
+
+# Test conventions
+- Always use `makeApp()` from `tests/_helpers/app.ts`. It returns `{ app, cleanup }`.
+- Use `app.request(path, init?)` directly (Hono's built-in test client). No supertest.
+- Import `{ describe, it, expect, beforeEach, afterEach }` from `vitest`.
+- Check response status AND body shape. Assert error envelopes: `{ error: { code, message } }`.
+- Unit: `tests/unit/`, Contract: `tests/contract/`, Integration: `tests/integration/`.
+```
+
+Ask GitHub Copilot: *"add edge-case tests for the quiz endpoint"*. The scoped instructions should load automatically for `**/tests/**` files.
+
+---
+
+## 6.2.4 Custom agents (`.agent.md`)
+**Loaded when:** explicitly invoked
+**Context cost:** replaces default agent behavior for that session
+**Use for:** specialized workflows with restricted tools or persona
+
+Files in `.github/agents/*.agent.md` that define a named persona with its own system instructions and tool access. Invoked via the agent picker in VS Code or `/agent` in the CLI.
+
+Create when a recurring task needs a specific persona or tool restriction. For example a "Reverse engineer" agent that can read code and create documentation of business rules, but is not allowed to edit code or run tests. 
+
+## Exercise 3: Create a "Test specialist" agent for the duck-emporium project
+
+Create `duck-emporium/.github/agents/test-specialist.agent.md`:
+
+```markdown
+---
+name: test-specialist
+description: Focuses on test coverage and quality without modifying production code
+tools: ["codebase", "search", "editFiles", "runCommands"]
+---
+You are a testing specialist focused on improving code quality through comprehensive testing. Analyze existing tests, identify coverage gaps, and write unit, integration, and end-to-end tests. Focus only on test
+files — avoid modifying production code unless specifically requested.
+```
+
+---
+
+## 6.2.5 Skills/`SKILL.md`
+**Loaded when:** agentic harness detects a matching defined task (description always loaded, full doc on match); e.g. a svg to png conversion skill
+**Context cost:** on-demand (only short description in always-on budget)
+**Use for:** packaged multi-step capabilities the agent can invoke autonomously
+
+A `SKILL.md` file in `.github/skills/<name>/` that describes a repeatable procedure. The harness reads all skill descriptions upfront (cheap) and loads the full document only when it matches the current task.
+
+Wrap any multi-step workflow (run tests → read failures → fix → rerun) into a skill. The agent activates it automatically or you invoke it with `/<skill-name>`.
+
+### Exercise 4: Create a "Run and fix tests" skill for the duck-emporium project
+
+Create `duck-emporium/.github/skills/run-and-fix-tests/SKILL.md`:
+
+```markdown
+---
+name: run-and-fix-tests
+description: Run the test suite and fix any failures. Use when asked to run tests, verify changes, or ensure tests pass.
+---
+
+# Run and fix tests
+
+1. Run `npm test`.
+2. If all tests pass, report success and stop.
+3. If tests fail, fix the **source code** (not the tests).
+4. Re-run. Repeat up to 3 cycles, then report remaining failures.
+```
+
+Ask the agent to make a risky change and verify it works. The skill will be selected automatically by the agentic harness.
+
+-- verified until here (June 22nd)
+
+---
+
+## 6.2.6 Prompt files (`.prompt.md`)
+Loaded when: you invoke them (`/prompt-name`)
+Context cost: one-shot (only for that invocation)
+Use for: reusable, parameterized workflows triggered on demand
+
+**What:** Markdown files in `.github/prompts/` with optional frontmatter (mode, description, variables). They appear as slash commands in Chat.
+
+**How:** Use for repeatable tasks where the *approach* is fixed and the *input* varies (e.g., `/sdd-spec` with a story ID). Unlike skills, they are user-initiated, not auto-detected.
+
+---
+
+## 6.2.7 MCP tools
+Loaded when: tool descriptions always loaded; results injected on use
+Context cost: descriptions are fixed overhead; results are variable per call
+Use for: connecting the agent to external data and actions (issue trackers, databases, APIs)
+
+**What:** [Model Context Protocol](https://modelcontextprotocol.io) servers that expose tools the agent can call. Configured in `.vscode/mcp.json` (VS Code) or `~/.copilot/mcp-config.json` (CLI).
+
+**How:** Keep the number of connected MCP servers small — each server's tool descriptions consume always-on context. Only connect what the current task needs.
+
+---
+
+## 6.2.8 Subagents
+Loaded when: spawned by the main agent during execution
+Context cost: separate context window (does not pollute the main session)
+Use for: offloading research or exploration to keep the main session lean
+
+**What:** The main agent can spawn a child agent (e.g., the Explore subagent) with its own context window. Results are summarized back into the parent.
+
+**How:** Useful for large codebases where searching would flood the main context. The subagent reads many files, returns a short summary.
+
+---
+
+## 6.2.9 Copilot Memory
+Loaded when: every call (automatic, cross-surface)
+Context cost: small per memory entry
+Use for: persistent learnings the agent should remember across sessions
+
+**What:** Facts the agent stores and retrieves automatically across conversations — preferences, past decisions, project-specific learnings.
+
+**How:** Let the agent learn from corrections. If you repeatedly fix the same mistake, tell it to remember the rule.
+
+---
+
+## 6.2.10 Summary
+
+| Control | Loaded when | Context cost | Use for |
+|---------|-------------|--------------|---------|
+| **System prompt & tools** | Every call | Fixed | Harness internals (not user-controlled) |
+| **`copilot-instructions.md` / `AGENTS.md`** | Every call | Proportional to file size | Non-negotiable project rules — keep small |
+| **Scoped instructions** (`.instructions.md`) | Matching files touched | On-demand | File-type-specific rules |
+| **Custom agents** (`.agent.md`) | When invoked | Replaces default | Specialized workflows with restricted tools |
+| **Skills** (`SKILL.md`) | Task match detected | On-demand | Packaged multi-step capabilities |
+| **Prompt files** (`.prompt.md`) | When you invoke them | One-shot | Reusable parameterized workflows |
+| **MCP tools** | Descriptions always; results on use | Descriptions fixed, results variable | External data and actions |
+| **Subagents** | When spawned | Separate window | Offload research, keep main session lean |
+| **Copilot Memory** | Every call | Small per entry | Persistent cross-session learnings |
+
+**Key insight:** always-on controls eat context on every call. Push detail to on-demand controls (scoped instructions, skills, subagents).
+
+### The layering decision framework
+
+1. **Every interaction in this repo?** → `copilot-instructions.md` / `AGENTS.md`
+2. **Only for specific file types?** → Scoped `.instructions.md` with `applyTo` glob
+3. **A specific multi-step workflow?** → Skill (`SKILL.md`)
+4. **A one-shot parameterized task?** → Prompt file (`.prompt.md`)
+5. **Needs a restricted tool set or persona?** → Custom agent (`.agent.md`)
+6. **Needs external data?** → MCP server
+
+---
+
+## 6.3 The miss → diagnosis → fix loop
+
+Even with good instructions, the agent will get things wrong. Context engineering is iterative — treat agent mistakes as **incidents**.
+
+1. **Miss.** The agent adds a new error class but does not register it in `error-mapper.ts` → API returns 500.
+2. **Diagnose.** Missing context? Conflicting rules? Context overload? Model limitation?
+3. **Fix.** Add to `AGENTS.md`: `- When adding a new domain error, also register it in src/middleware/error-mapper.ts.`
+4. **Verify.** Undo, re-run the same prompt, confirm the mistake is gone.
+
+<div class="tip" data-title="Do this now">
+
+> Ask: *"add a `DuckOutOfStockError` that returns 409 when adding an out-of-stock duck to the cart"*. If the agent misses the error mapper, add a rule, undo, re-run.
+
+</div>
+
+Every miss becomes a rule. Every rule is verifiable. Instructions evolve with the project.
+
+## 6.4 Anti-patterns to avoid
+
+| Anti-pattern | Why it hurts | Fix |
+|-------------|-------------|-----|
+| **Dumping everything in `copilot-instructions.md`** | Tokens wasted every call, context rot | Move file-specific rules to scoped instructions |
+| **Using AI to generate instructions** | Verbose, vague, unmaintainable | Write yourself — concise, verifiable, from real misses |
+| **Write once, forget forever** | Drift as project evolves | Review and prune regularly |
+| **Contradictory rules across layers** | Unpredictable behavior | Each rule lives in exactly one place |
+| **No stop signals** | Agent over-extends, modifies wrong files | Explicit boundaries ("do not modify X") |
+| **Overfilling the context window** | Lost-in-the-middle, recency bias | Fresh sessions, `/compact`, smaller steps |
+
+## 6.5 Going further
+
+<div class="tip" data-title="Practical takeaway">
+
+> Start new chat sessions for new tasks. Use `/compact` in the CLI to shrink context. Break large tasks into focused steps.
+
+</div>
+
+For teams scaling context engineering across repositories:
+
+- **[AgentRC](https://github.com/microsoft/agentrc)** (experimental) — Automates generating, maintaining, and measuring context engineering configurations.
+- **[thisistheway.to](https://thisistheway.to/ai/)** — Treating agent misses as incidents.
+- **[Copilot CLI Plugins](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-plugins)** — Distribute reusable instructions and skills across repositories.
+- **[Agent Package Manager (APM)](https://github.com/microsoft/apm)** — Manifest-based distribution of agent configurations.
+
+<div class="tip" data-title="One thing to try tomorrow">
+
+> Open any project you work on daily. Think about the last three times the agent got something wrong. Could a single line of instruction have prevented it? Add that line.
+
+</div>
 
 ---
 
