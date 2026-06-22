@@ -613,8 +613,6 @@ The base prompt and tool definitions injected by the harness before your convers
 
 You cannot edit it, but you can inspect it. [Enable debug mode in VS Code to see logs.](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/troubleshoot-copilot/view-logs)
 
----
-
 ## 6.2.2 `copilot-instructions.md` / `AGENTS.md`
 **Loaded when:** every call (always-on)
 **Context cost:** proportional to file size
@@ -635,8 +633,6 @@ Open the GitHub Copilot chat window and type `/create-instructions`. (Or in the 
 
 If you want to have an exmaple how a decent `copilot-instructions.md` could look like: in the project root of this repo you can find a file for the whole workshop repository.
 
----
-
 ## 6.2.3 Scoped instructions (`.instructions.md`)
 **Loaded when:** agent touches files matching the `applyTo` glob
 **Context cost:** on-demand (zero cost when not triggered)
@@ -653,8 +649,6 @@ As `AGENTS.md` work a little different, you can create an `AGENTS.md` file in ea
 > Different from `.instructions.md` files, `AGENTS.md` files are merged root-downward based on the file being edited. So if you have an `AGENTS.md` in the root and one in `frontend/`, when the agent edits a file in `frontend/` it will see the instructions from both the root and the frontend `AGENTS.md`. When it edits a file in `backend/` it will only see the instructions from the root `AGENTS.md`.
 
 </div>
-
-
 
 ### Exercise 2: Create `testing.instructions.md` for the duck-emporium project
 
@@ -675,8 +669,6 @@ applyTo: "**/tests/**"
 ```
 
 Ask GitHub Copilot: *"add edge-case tests for the quiz endpoint"*. The scoped instructions should load automatically for `**/tests/**` files.
-
----
 
 ## 6.2.4 Custom agents (`.agent.md`)
 **Loaded when:** explicitly invoked
@@ -700,8 +692,6 @@ tools: ["codebase", "search", "editFiles", "runCommands"]
 You are a testing specialist focused on improving code quality through comprehensive testing. Analyze existing tests, identify coverage gaps, and write unit, integration, and end-to-end tests. Focus only on test
 files — avoid modifying production code unless specifically requested.
 ```
-
----
 
 ## 6.2.5 Skills/`SKILL.md`
 **Loaded when:** agentic harness detects a matching defined task (description always loaded, full doc on match); e.g. a svg to png conversion skill
@@ -734,8 +724,6 @@ Ask the agent to make a risky change and verify it works. The skill will be sele
 
 -- verified until here (June 22nd)
 
----
-
 ## 6.2.6 Prompt files (`.prompt.md`)
 Loaded when: you invoke them (`/prompt-name`)
 Context cost: one-shot (only for that invocation)
@@ -744,8 +732,6 @@ Use for: reusable, parameterized workflows triggered on demand
 **What:** Markdown files in `.github/prompts/` with optional frontmatter (mode, description, variables). They appear as slash commands in Chat.
 
 **How:** Use for repeatable tasks where the *approach* is fixed and the *input* varies (e.g., `/sdd-spec` with a story ID). Unlike skills, they are user-initiated, not auto-detected.
-
----
 
 ## 6.2.7 MCP tools
 Loaded when: tool descriptions always loaded; results injected on use
@@ -756,8 +742,6 @@ Use for: connecting the agent to external data and actions (issue trackers, data
 
 **How:** Keep the number of connected MCP servers small — each server's tool descriptions consume always-on context. Only connect what the current task needs.
 
----
-
 ## 6.2.8 Subagents
 Loaded when: spawned by the main agent during execution
 Context cost: separate context window (does not pollute the main session)
@@ -767,8 +751,6 @@ Use for: offloading research or exploration to keep the main session lean
 
 **How:** Useful for large codebases where searching would flood the main context. The subagent reads many files, returns a short summary.
 
----
-
 ## 6.2.9 Copilot Memory
 Loaded when: every call (automatic, cross-surface)
 Context cost: small per memory entry
@@ -777,8 +759,6 @@ Use for: persistent learnings the agent should remember across sessions
 **What:** Facts the agent stores and retrieves automatically across conversations — preferences, past decisions, project-specific learnings.
 
 **How:** Let the agent learn from corrections. If you repeatedly fix the same mistake, tell it to remember the rule.
-
----
 
 ## 6.2.10 Summary
 
@@ -804,8 +784,6 @@ Use for: persistent learnings the agent should remember across sessions
 4. **A one-shot parameterized task?** → Prompt file (`.prompt.md`)
 5. **Needs a restricted tool set or persona?** → Custom agent (`.agent.md`)
 6. **Needs external data?** → MCP server
-
----
 
 ## 6.3 The miss → diagnosis → fix loop
 
