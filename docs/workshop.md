@@ -7,8 +7,10 @@ description: Learn the fundamentals of GitHub Copilot and then go deep on Spec-D
 level: intermediate
 authors:
   - Julia Kordick
+  - Artur Speth
 contacts:
   - "@jkordick"
+  - "@aspeth"
 duration_minutes: 240
 tags: GitHub, Copilot, AI, Spec-Driven Development, SDD, TypeScript, Node, CLI
 navigation_levels: 3
@@ -17,7 +19,7 @@ navigation_numbering: true
 
 # GitHub Copilot Advanced: Spec-Driven Development and beyond
 
-*Version 1.0 — June 2026*
+*Version 2.0 — June 2026*
 
 Welcome! This workshop has the following parts:
 
@@ -27,7 +29,8 @@ Welcome! This workshop has the following parts:
 4. (soon) **How to use [squad](https://github.com/bradygaster/squad)** open-source framework for orchestrating multi-agent development teams.
 5. (soon) **SDD for app modernization**: a dedicated chapter on how to use SDD to modernize legacy apps.
 6. **Context Engineering**: Theory foundations (LLMs, agents, context rot) followed by hands-on exercises adding instructions, scoped rules, and skills to a pre-built project.
-7. **The GitHub Copilot SDK**: Embed Copilot directly into your own apps — open sessions, stream responses, and let Copilot call custom tools you define in TypeScript/Node.
+7. (soon) **Agentic Workflows**
+8. **The GitHub Copilot SDK**: Embed Copilot directly into your own apps — open sessions, stream responses, and let Copilot call custom tools you define in TypeScript/Node.
 
 <div class="info" data-title="Who is this for?">
 

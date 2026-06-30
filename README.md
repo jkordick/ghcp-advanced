@@ -15,6 +15,10 @@ Or read the raw markdown: [`docs/workshop.md`](docs/workshop.md).
 3. **spec-kit**: an open-source toolkit by the GitHub team that formalizes and extends the loop you just did by hand. It can be used in combination with GitHub Copilot but also many more agentic AIs for coding.
 4. (soon) **Squad**: an open-source framework for orchestrating multi-agent development teams on top of GitHub Copilot.
 5. (soon) **SDD for app modernization**: a dedicated chapter on how to use SDD to modernize legacy apps.
+6. **Context Engineering**: Theory foundations (LLMs, agents, context rot) followed by hands-on exercises adding instructions, scoped rules, and skills to a pre-built project.
+7. (soon) **Agentic Workflows**
+8. **GitHub Copilot SDK**: Embed Copilot directly into your own apps — open sessions, stream responses, and let Copilot call custom tools you define.
+9. (soon) **Security, Sandboxing, and Guardrails**.
 
 ## Pre-reqs
 
