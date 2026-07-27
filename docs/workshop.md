@@ -533,7 +533,7 @@ A dedicated chapter on [squad](https://github.com/bradygaster/squad): an open-so
 
 ---
 
-# Chapter 5 — SDD for App Modernization
+# Chapter 5 — App Modernization
 
 Chapter 2 used SDD to build something new. This chapter uses the same discipline in the opposite direction: taking an **existing** code base — usually one nobody fully understands anymore — and modernizing it without losing the business rules baked into it over the years.
 
