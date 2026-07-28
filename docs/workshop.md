@@ -1,23 +1,24 @@
 ---
 published: true
 type: workshop
-title: "GitHub Copilot Advanced: Spec-Driven Development and beyond"
-short_title: "GitHub Copilot Advanced: SDD and beyond"
-description: Learn the fundamentals of GitHub Copilot and then go deep on Spec-Driven Development (SDD), the discipline of letting specifications drive your AI-assisted code.
+title: "GitHub Copilot Advanced"
+short_title: "GitHub Copilot Advanced"
+description: Learn the fundamentals of GitHub Copilot and then go deep advanced concepts like Spec-Driven Development (SDD), Context Engineering, Squad, App Modernization Agentic Workflows, the GitHub Copilot SDK, Security, Sandboxing and Guardrails.
 level: intermediate
 authors:
-  - Julia Kordick
+  - "Lead: Julia Kordick"
+  - "Contributors: Artur Speth, Laetitia Maar, Taja Ly"
 contacts:
   - "@jkordick"
-duration_minutes: 240
+duration_minutes: 300
 tags: GitHub, Copilot, AI, Spec-Driven Development, SDD, TypeScript, Node, CLI
 navigation_levels: 3
 navigation_numbering: true
 ---
 
-# GitHub Copilot Advanced: Spec-Driven Development and beyond
+# GitHub Copilot Advanced
 
-*Version 1.0 — June 2026*
+*Version 3.0 — July 2026*
 
 Welcome! This workshop has the following parts:
 
@@ -25,8 +26,11 @@ Welcome! This workshop has the following parts:
 2. **Spec-Driven Development (SDD)**: You will learn how to make specifications, drive what GitHub Copilot builds for you, and you will do it end-to-end on a small TypeScript/Node feature.
 3. **Introduction of [spec-kit](https://github.com/github/spec-kit)** as a tool to use spec driven development conveniently with most agentic coding tools.
 4. (soon) **How to use [squad](https://github.com/bradygaster/squad)** open-source framework for orchestrating multi-agent development teams.
-5. (soon) **SDD for app modernization**: a dedicated chapter on how to use SDD to modernize legacy apps.
+5. **App modernization**: a dedicated chapter on how to use GitHub Copilot to modernize legacy apps, with two hands-on tracks (spec-kit-driven and GitHub Copilot-native custom agents + prompts).
 6. **Context Engineering**: Theory foundations (LLMs, agents, context rot) followed by hands-on exercises adding instructions, scoped rules, and skills to a pre-built project.
+7. (soon) **Agentic Workflows**
+8. **The GitHub Copilot SDK**: Embed Copilot directly into your own apps — open sessions, stream responses, and let Copilot call custom tools you define in TypeScript/Node.
+9. **Security, Sandboxing and Guardrails**: How to use Copilot safely in your organization, and how to build your own guardrails for your own agentic AI.
 
 <div class="info" data-title="Who is this for?">
 
@@ -529,7 +533,267 @@ A dedicated chapter on [squad](https://github.com/bradygaster/squad): an open-so
 
 ---
 
-# Chapter 5 (coming soon) - SDD for app modernization
+# Chapter 5 — App Modernization
+
+Chapter 2 used SDD to build something new. This chapter uses the same discipline in the opposite direction: taking an **existing** code base — usually one nobody fully understands anymore — and modernizing it without losing the business rules baked into it over the years.
+
+Modernization is where agentic AI actually earns its keep. A human alone can rewrite a legacy service, but the tedious parts — reading every controller, every stored procedure, every XML config, every home-grown utility — are exactly what the agent is good at, *if* you give it a framework to work in. That framework is SDD, applied backwards: first you use the agent to **rediscover** the spec that the code implicitly encodes, then you use SDD forward again to plan and rebuild against that spec.
+
+<div class="info" data-title="Same discipline, different starting point">
+
+> In Chapter 2 the input was a user story and the output was code. In this chapter the input is code and, over multiple SDD iterations, the output is (first) a spec, then a plan, then new code. The Spec → Plan → Tasks → Implement loop is the same — we just "misuse" it.
+
+</div>
+
+## 5.1 Why divide and conquer matters even more here
+
+A greenfield project has one thing legacy code doesn't: a bounded scope. You know what you are building because you just wrote the story. In a legacy system, scope is whatever accumulated over 5–20 years of tickets, hotfixes, integrations and "temporary" workarounds. Trying to modernize it in one pass — even with the best agent — reliably produces two outcomes:
+
+1. **Silent behavior loss.** Edge cases that were load-bearing for one specific customer disappear because nobody documented them and the agent had no reason to preserve them.
+2. **Context collapse.** The agent's context window fills up with legacy code before it gets to reason about the target architecture, and quality drops sharply.
+
+The fix is the same discipline you already learned: **break the work into phases, each producing a reviewable artifact, each committable on its own.** We use four phases for modernization:
+
+| Phase | Input | Output | Question it answers |
+| --- | --- | --- | --- |
+| **1. Rediscovery** | Legacy source, docs, tickets | Reverse engineered business logic + curated `AGENTS.md` | *What does this system actually do?* |
+| **2. Substitution audit** (optional) | Legacy sources, rediscovered business logic | Substitution map | *What in here is no longer needed or state of the art?* |
+| **3a. Re-architecture** | Reverse engineered business logic + substitution map | Target architecture plan | *What should the new shape look like?* |
+| **3b. Re-write** | Target plan + reverse engineered business logic + substitution map | New implementation + tests (you can also apply Test Driven Development here) | *How do we rebuild the business logic without losing it?* |
+| **4. Deploy** (optional) | Working new build | CI/CD pipeline + running environment | *How does this ship, repeatably?* |
+
+<div class="warning" data-title="Agentic AI is non-deterministic">
+
+> Especially for the reverse engineering in phase 1, agentic AI is not the magic solution. In real world scenarios you will always need a combination of agentic power, human oversight and deterministic tooling to ensure that the rediscovered business logic is correct. No one with a reputation would ever promise you a one-click solution. Only believe what you can validate!
+
+</div>
+
+## 5.2 Phase 1 — Rediscovery/Reverse engineering
+
+The goal of phase 1 is to produce, from the code itself, existing tests, documentation — whatever is available — a reviewable reverse engineered list of business rules, data models, and integrations.
+
+You point the agent at the repository (or, more often, a *module* of it) and ask it to produce artifacts like:
+
+- **A list of business rules** — what the system does, in plain English, with examples. This is the most important artifact: it is what you will use to validate that the new implementation preserves the old behavior.
+- **A data model summary** — entities, relationships, invariants (including the ones only enforced by DB triggers or defensive `if`s scattered across services).
+- **An integration inventory** — every external system this module talks to: databases, message queues, third-party APIs, filesystem paths, hard-coded IPs.
+- **A behavior open-questions list** — anything the agent could not resolve from the code alone. This becomes the interview list for the humans who still remember.
+
+<div class="tip" data-title="Curate an AGENTS.md before you go deep">
+
+> `AGENTS.md` files are very handy in agentic modernization scenarios too. Even before the rediscovery phase starts, a curated `AGENTS.md` helps the agent understand the context of the legacy system and its dependencies, and avoid making wrong assumptions.
+
+</div>
+
+<div class="info" data-title="Rediscovery is where humans still lead">
+
+> The agent is fast at reading code. It is not fast at knowing which of the 40 branches in the pricing engine is actually used in production. Treat phase 1 as *agent-assisted archaeology*: the agent produces drafts, humans who know the system correct them, and the corrections get folded back into the results.
+
+</div>
+
+At the end of phase 1 you have something the original codebase probably never had: a human- and agent-reviewable document. That alone is often worth the exercise, even if you never proceed to phase 2 (e.g. if you want to keep a certain technology stack for a while longer, like a mainframe).
+
+## 5.3 Phase 2 — Substitution audit (optional)
+
+Phase 1 tells you *what* the system does. Phase 2 asks: *of the things it does, which ones should not be done that way anymore?*
+
+The pattern here is a walk through the rediscovery spec, flagging each element against today's ecosystem:
+
+- **Home-grown code that is now a library.** Custom retry loops, hand-rolled JSON parsers, bespoke connection pools, in-house auth — anything that has become a well-supported dependency (or a platform primitive) since the code was written.
+- **Integrations that have moved on.** SOAP endpoints that now offer REST/GraphQL, on-prem message brokers with managed equivalents, batch file drops that could be event streams, custom SFTP scripts that could be a managed connector.
+- **Data stores that no longer fit.** A single monolithic RDBMS holding data with wildly different access patterns; a NoSQL choice that was trendy in 2015 but has no operator today; a schema shaped around a UI that no longer exists.
+- **Runtimes and frameworks past their sell-by date.** End-of-life language versions, EOL frameworks, container base images with unpatched CVEs, servers nobody ships new versions of.
+- **Operational assumptions that don't survive contact with the cloud.** Local filesystem state, background threads that must survive across requests, singleton in-memory caches, "just SSH in and restart it" runbooks.
+
+The output is a table (or a set of them) with rows like *"custom JWT verification in `src/auth/` → replace with framework middleware, reason: CVE surface + team no longer maintains it"* or *"nightly cron pushing CSVs to partner FTP → replace with event-driven pipeline, reason: latency + observability"*. Each row is a candidate change with an explicit trade-off, which is exactly what phase 3 needs to make architectural decisions.
+
+<div class="info" data-title="Not everything gets substituted">
+
+> A perfectly good substitution map has "keep as-is" rows. If a piece of the legacy system is stable, well-understood and cheap to run, leaving it alone is a legitimate outcome. Modernization is not a synonym for rewriting everything.
+
+</div>
+
+## 5.4 Phase 3 — Re-architect and re-write
+
+Phase 3 is where you go from *understanding* the legacy system to *replacing* it. It splits cleanly in two, and the split matters because they answer different questions and are reviewed by different people.
+
+### 5.4.1 Phase 3a — Re-architecture
+
+Input: the reverse engineered business logic (phase 1) and the substitution map (phase 2). Output: a **target architecture plan** scoped to the whole module or system rather than a single story.
+
+The plan covers:
+
+- **Target runtime and platform** — language version, framework, deployment target (containers, serverless, managed app platform).
+- **Module and service boundaries** — what stays a monolith, what splits out, and *why* (each split needs a justification tied back to the behavior spec).
+- **Data model and storage choices** — including the migration path from the legacy schema.
+- **Integration contracts** — the concrete API/event shapes replacing each legacy integration flagged in phase 2.
+- **Cross-cutting concerns** — auth, logging, config, secrets, observability, feature flags.
+- **Migration strategy** — big-bang vs. strangler-fig vs. parallel-run, and how you keep the lights on for existing users during the transition.
+- **Risks** — the ones the agent can name from the spec plus the ones the humans add from experience.
+- and everything that might be relevant for your specific modernization scenario / tech stack.
+
+### 5.4.2 Phase 3b — Re-write
+
+Once the architecture is approved, re-writing the business logic looks a lot like Chapter 2 of this course. You break the reverse engineered business logic and the architecture plan into a spec, plan, task list and then you implement them one at a time with tests.
+
+Two techniques matter here:
+
+- **Behavior-preserving tests come first.** Before rewriting a module, derive tests from the rediscovery spec that exercise its observable behavior. These tests live against the *new* implementation and are your guardrail against silent regressions.
+- **Strangler-fig by default.** Route new implementations behind the same interface as the legacy code and switch traffic gradually. Big-bang cutovers are viable for small modules and effectively never viable for large ones.
+
+<div class="warning" data-title="Do not let the agent invent business rules">
+
+> When the agent hits a gap in the business rule description during phase 3b, it will be tempted to *guess* what the legacy system did. Prompt the agent so that whenever there is a white space — something that needs to be clarified — it stops and asks. Guessed business rules are the single most expensive class of modernization defects because they only surface in production, quietly, on the customers whose edge case you missed.
+
+</div>
+
+## 5.5 Phase 4 (optional) — CI/CD and deployment
+
+At this point the artifacts you produced in earlier phases pay off again: the architecture plan named the deployment target, the substitution map named the operational changes, and the behavior tests give you a signal you can gate a pipeline on. Phase 4 is where you:
+
+- Set up (or extend) the CI pipeline to build, test and scan the new code.
+- Produce the infrastructure-as-code for the target platform (containers, managed services, whatever phase 3a picked).
+- Wire up secrets, config, observability and health checks.
+- Define the promotion path — dev → staging → production — and the rollback path.
+- Run the strangler-fig cutover from phase 3b behind whatever traffic-shifting mechanism your platform provides.
+
+## 5.6 Hands-on: modernize a legacy application
+
+You have two ways to run this hands-on. Both cover the same four phases; they differ only in *how you drive the agent(s)*. Pick one — you do **not** need to do both.
+
+- **Track A — spec-kit driven (recommended).** You drive the loop yourself with the `/speckit.*` commands from [Chapter 3](#chapter-3-spec-kit-by-github), one full loop per phase. No bespoke assets required. This is the natural continuation of the spec-kit chapter and is stack-agnostic.
+- **Track B — GitHub Copilot-native custom agents + prompts (alternative).** You run a pre-built kit of custom agents and prompt files that productize the exact same four phases into turnkey, one-artifact-per-run commands. This track doubles as a capstone for the custom agents (1.5) and prompt files (1.4) you met earlier.
+
+<div class="info" data-title="Why we leave the duck behind here">
+
+> Both tracks deliberately step away from the greenfield `duck-emporium` you use elsewhere in this workshop. Modernization needs *real legacy code* — a purpose-built TypeScript/Node sample would defeat the point — so each track works against an external legacy repository instead. Everything you learn transfers straight back to whatever legacy system you actually own.
+
+</div>
+
+### 5.6.1 Track A (recommended) — spec-kit driven
+
+We prepared a Java legacy application for you to modernize. You can find it [here](https://github.com/jkordick/training-java-monolith-refactor). Based on this example you will work through the phases with the help of SDD, running a separate SDD loop per phase.
+
+After cloning the repository, initialize spec-kit as you did in [Chapter 3](#chapter-3-spec-kit-by-github).
+
+Then run **one full spec-kit loop per phase**. Treat each phase's *modernization activity itself* as the "feature" being built: `/speckit.specify` describes the deliverables and constraints, `/speckit.plan` designs the approach (reading order, tooling, heuristics), `/speckit.tasks` breaks it into work items, and `/speckit.implement` executes them and produces the actual artifacts. The kick-off prompts below only cover `/speckit.specify` — spec-kit prompts you for the rest.
+
+<div class="tip" data-title="Why specify the activity, not just do it">
+
+> Reverse engineering, auditing, re-architecting and deploying are all non-trivial pieces of work with their own failure modes. Specifying them first forces you (and the agent) to be explicit about *what "done" looks like* before any file is touched — which is the whole point of SDD.
+
+</div>
+
+#### Phase 1 — Rediscovery
+
+```text
+/speckit.specify Specify a rediscovery of this legacy Java monolith. Deliverables: (1) a business-rules document in plain English with concrete code references and examples, (2) a data-model summary — entities, relationships, invariants (including those enforced only by defensive code or DB constraints), (3) an integration inventory (every external system, filesystem path, hard-coded endpoint), (4) an open-questions list for anything the code alone cannot answer. Constraints: no code changes, no modernization proposals, stop and ask before guessing behavior. Success: a domain reviewer can validate each rule against a concrete code reference.
+```
+
+Then run `/speckit.plan`, `/speckit.tasks`, `/speckit.implement` to design the reading order, split by module/subsystem, and produce the artifacts. Do the same after each `/speckit.specify` in the phases below.
+
+#### Phase 2 — Substitution audit
+
+```text
+/speckit.specify Specify a substitution audit over the rediscovery artifacts (phase 1). Deliverables: (1) a substitution-audit table with columns *legacy element*, *proposal* (keep-as-is | replace-with-library | replace-with-platform | retire), *reason*, *trade-off*; (2) coverage spanning home-grown code with modern equivalents, dated integrations, unfit data stores, EOL runtimes/frameworks, and cloud-hostile operational assumptions. Constraint: audit only — do not design the new architecture. Success: every row links back to a specific rediscovery entry.
+```
+
+#### Phase 3a — Re-architecture
+
+```text
+/speckit.specify Specify the target architecture for the modernized system, informed by the rediscovery (phase 1) and substitution audit (phase 2). Deliverables: (1) target runtime and platform, (2) module/service boundaries, (3) data model and migration path from the legacy schema, (4) integration contracts replacing each flagged legacy integration, (5) cross-cutting concerns (auth, logging, config, secrets, observability), (6) migration strategy (default: strangler-fig), (7) risks. Constraint: architecture only — no code, no per-module rewrite tasks yet. Success: every architectural choice traces back to either a preserved business rule or a substitution-audit row.
+```
+
+#### Phase 3b — Re-write
+
+```text
+/speckit.specify Specify the rewrite of a single module (module boundaries defined in the re-architecture, phase 3a), informed by the rediscovery (phase 1), substitution audit (phase 2) and target architecture (phase 3a). Deliverables: (1) functional requirements for the module, (2) behavior-preserving acceptance tests derived from the phase-1 business rules — every functional requirement must map to at least one, (3) an interface contract identical to the legacy code so traffic can be switched gradually. Constraint: if a business rule is ambiguous or missing, stop and ask — never invent behavior. Note: repeat this phase-3b loop module by module until the legacy code path is empty. Success: legacy and new implementation produce identical results for the acceptance tests.
+```
+
+#### Phase 4 (optional) — CI/CD and deployment
+
+```text
+/speckit.specify Specify the deployment for the modernized system, informed by the target architecture (phase 3a) and the current build/test setup. Deliverables: (1) CI pipeline (build, test, scan), (2) infrastructure-as-code for the platform chosen in the re-architecture (phase 3a), (3) secrets/config/observability wiring, (4) promotion path dev → staging → production, (5) rollback path, (6) strangler-fig traffic-shifting mechanism for modules rewritten in phase 3b. Constraint: no live deployment during specify/plan/tasks. Success: from these artifacts alone, a fresh environment can be created and a rewritten module cut over end-to-end.
+```
+
+### 5.6.2 Track B (alternative) — Copilot-native custom agents + prompts
+
+This track ships the same four phases as a pre-built kit of **custom agents** (personas) and **prompt files** (actions). It uses an IBM COBOL application — [Bank-of-Z](https://github.com/IBM/Bank-of-Z) — as the legacy system, so you also see how the pattern generalizes beyond Java.
+
+**Get the kit.** The agents and prompts live on the [`app-mod-ghcp-native-start`](https://github.com/jkordick/ghcp-advanced/tree/app-mod-ghcp-native-start) branch of this repo, under `.github/agents/` and `.github/prompts/`. Fork & clone [Bank-of-Z](https://github.com/IBM/Bank-of-Z), open it in VS Code (or `cd` into it), then copy the `.github/agents` and `.github/prompts` folders from that branch into the cloned repository.
+
+**How the prompts and agents work together.** The `.github/agents/*.agent.md` files are the **personas** — each one is a Copilot mode with a scoped mission, ownership and tool access (e.g. `cobol-archaeologist` is read-only, `module-rewriter` can edit and run tests). The `.github/prompts/*.prompt.md` files are the **actions** — small, single-purpose commands you invoke from Chat. Each prompt has an `agent:` in its frontmatter, so running the prompt automatically switches Copilot into the right persona for the job.
+
+**How to invoke them.**
+
+- **In VS Code:** open Copilot Chat, type `/` and pick the prompt by name (they show up as `01-rediscovery-bootstrap`, `01-rediscovery-business-rules`, …). Copilot switches to the pinned agent, runs the prompt, produces the artifact, then stops.
+- **In the Copilot CLI:** prompt files are a VS Code Chat feature and are not exposed as slash commands. Pick the agent with `/agent` and paste the prompt body.
+
+**The execution pattern is the same for every prompt.** Run one prompt → review the diff → commit → run the next. Each prompt writes to a named artifact under `docs/modernization/<phase>/`, cites `path/to/file:LINE` for anything specific, and stops. If it hits ambiguity, it appends to `docs/modernization/01-rediscovery/open-questions.md` instead of guessing. This is what makes the flow reviewable and controllable: every step is a small, git-diffable change against a persistent artifact — no big-bang generations, no invented behavior.
+
+<div class="tip" data-title="One prompt at a time">
+
+> Resist the urge to chain prompts inside a single Chat turn. The value of the breakdown is that a human sees each artifact before the next prompt runs. Chaining collapses the review points.
+
+</div>
+
+#### Phase 1 — Rediscovery
+
+Agent: `cobol-archaeologist` (read-only). Artifacts land in `docs/modernization/01-rediscovery/`. Run these prompts, in order, reviewing between each:
+
+1. **`/01-rediscovery-bootstrap`** — scans the repo, writes `repo-map.md` (programs, copybooks, JCL, DDL, config) and drafts an `AGENTS.md` at the repo root. Always run this first, on any legacy repo. Review the `AGENTS.md` carefully — it is what every subsequent agent turn will silently load.
+2. **`/01-rediscovery-business-rules`** — pick **one** module from the reading order in `repo-map.md`. Appends business rules for that module to `business-rules.md`, citing `path/to/file:LINE` with worked examples. Re-run per module — do not sweep the whole repo in one go.
+3. **`/01-rediscovery-data-model`** — reverse-engineers entities, keys, invariants and encoded value domains from DDL, copybooks and defensive code. Appends to `data-model.md` (include a mermaid ER diagram if it helps reviewers).
+4. **`/01-rediscovery-integrations`** — inventories every external touchpoint (DB tables, files, MQ, sockets, CICS/IMS transactions, JCL triggers, hard-coded endpoints). Appends to `integrations.md` with direction and load-bearing flag.
+5. **`/01-rediscovery-open-questions`** — final sweep. Consolidates hedging language, unexplained codes, dead-branch guesses and cross-artifact contradictions into `open-questions.md` with blast-radius annotations. Take this list to the domain experts before you move on.
+
+#### Phase 2 — Substitution audit (optional)
+
+Agent: `substitution-auditor`. Artifact: `docs/modernization/02-substitution-audit/audit.md`.
+
+One prompt: **`/02-substitution-audit`**. Run it once per category (home-grown code / dated integrations / unfit data stores / EOL runtimes / cloud-hostile ops) or once per subsystem. Each run appends rows to `audit.md` with `verdict ∈ {keep-as-is, replace-with-library, replace-with-platform, retire}`, a reason, and an explicit trade-off. Rows without a trade-off get rejected by the agent by design — that is the guardrail against "let's just rewrite it in $LANG" bias. Phase 2 is optional: some engagements stop after phase 1 (e.g. you want the docs but plan to keep the mainframe another few years).
+
+#### Phase 3a — Re-architecture
+
+Agent: `target-architect`. Artifact: `docs/modernization/03a-architecture/target-architecture.md`.
+
+One prompt: **`/03a-architecture-decision`**. Run it once per architectural decision (target runtime/platform, module boundaries, data model + migration path, an integration contract, a cross-cutting concern, migration strategy, a named risk). **Why one decision per run:** architecture decisions have consequences that later ones depend on, so running them one at a time forces you to review, commit, and let the next decision cite the previous one. If the agent judges a choice genuinely open, it lists two options with trade-offs and **stops without picking** — that is your cue to bring a human architect in.
+
+#### Phase 3b — Re-write
+
+Agent: `module-rewriter`. Artifacts: `docs/modernization/03b-rewrite/<module>/{acceptance-tests,interface,parity}.md` and the new implementation under wherever phase 3a put the target codebase.
+
+Three prompts, in order, **per module**:
+
+1. **`/03b-rewrite-tests`** — derives behavior-preserving acceptance tests from the module's section of `business-rules.md`. Output is a table in `acceptance-tests.md`: `test id | rule ref | input | expected output | notes`. No test code yet — this is the acceptance contract in review-friendly form. If a rule is ambiguous the prompt stops and files an entry in `open-questions.md`.
+2. **`/03b-rewrite-interface`** — writes `interface.md`: entry points, input/output layouts field-by-field, return-code semantics, side effects, and the strangler-fig switch point. This is what lets the new implementation drop in behind the legacy interface.
+3. **`/03b-rewrite-implement`** — the actual TDD loop. Pick a **slice** of the acceptance tests (small enough to review) and run the prompt. It writes the test code, verifies the tests fail, writes the smallest implementation that makes them pass, runs the full module suite, and appends the slice status to `parity.md`. Repeat until the module is green.
+
+Repeat all three prompts for the next module. When every module is green, phase 3b is done.
+
+<div class="warning" data-title="Ambiguity is the enemy">
+
+> If you catch the agent inventing an expected output in `acceptance-tests.md`, or filling in a return code in `interface.md` that isn't in the legacy code, stop the run and treat it as a bug in your prompt discipline — not in the tool. The prompts explicitly tell it to stop and ask; if it didn't, the context probably included a stale rule from an earlier phase. Fix the source, not the symptom.
+
+</div>
+
+#### Phase 4 (optional) — CI/CD and deployment
+
+Agent: `deployment-engineer`. Artifacts: `.github/workflows/`, `infra/`, and `docs/modernization/04-deploy/`.
+
+Three prompts, run in whatever order suits your team:
+
+1. **`/04-deploy-ci`** — emits `.github/workflows/ci.yml` (build, unit tests, phase-3b acceptance tests as a gate, security scan, IaC lint, package) plus `pipeline.md`. Files only — the prompt refuses to execute the workflow.
+2. **`/04-deploy-iac`** — emits infrastructure-as-code under `infra/` in the flavor phase 3a picked (Bicep / Terraform / etc.), plus `observability.md`. If phase 3a didn't pick a flavor the prompt stops and asks. Secrets are always referenced by name from a vault — the prompt refuses to inline values. Nothing gets `apply`d.
+3. **`/04-deploy-cutover`** — writes `promotion.md`, `cutover.md` and `rollback.md`: the strangler-fig traffic-shift mechanism, the dev → staging → prod gates, and how to fail back at each shift step including in-flight state reconciliation.
+
+Phase 4 stops at emitting reviewable artifacts. Actually running `az deployment`, `terraform apply`, or flipping a feature flag in production is out of scope for the workshop — that is a decision for a human with a change-management ticket, not an agent turn.
+
+<div class="info" data-title="What you take home">
+
+> After a full pass you have: a curated `AGENTS.md`, four rediscovery documents that a domain reviewer signed off on, a substitution audit with explicit trade-offs, an architecture document where every decision is traceable, one or more modules re-implemented with a parity report against the legacy behavior, and a deployable pipeline + IaC. Every one of those artifacts survives without the agent — that is the durable value of doing modernization this way. And this pattern repeats with every kind of legacy system.
+
+</div>
 
 ---
 
@@ -572,8 +836,6 @@ Every loop iteration grows the context. The LLM is stateless: so the harness res
 
 ### Context rot
 
-> Read more about context rot: https://www.producttalk.org/context-rot/
-
 As the context window fills up, two effects kick in:
 
 ![Lost in the midlle](assets/cr-st50.webp)
@@ -586,14 +848,14 @@ This is why long, unfocused agent sessions degrade in quality. Just because the 
 
 > Read more about context rot: https://www.producttalk.org/context-rot/
 
-# Context engineering provided by the GitHub Copilot & VS Code team
+## 6.2 Context engineering provided by the GitHub Copilot & VS Code team
 
 The GitHub Copilot harness actively works to keep context lean. **Prompt caching** reuses model state for the repeated prompt prefix (system instructions, tool definitions, conversation history) instead of reprocessing it on every turn, because cached tokens are up to 10× cheaper. **Tool search** defers full tool schemas out of context until the model actually needs them. Only lightweight names and descriptions are loaded upfront. Together these cut ~10–18% of total tokens per session. Read the technical deep dive: [Improving token efficiency for GitHub Copilot in VS Code](https://code.visualstudio.com/blogs/2026/06/17/improving-token-efficiency-in-github-copilot).
 
 Not every task needs the strongest frontier model. **Auto mode** uses a routing model called HyDRA to match each task to the best-fit model based on reasoning depth, code complexity, and tool orchestration needs. It routes at natural cache boundaries (first turn, after compaction) to avoid breaking prompt cache. In evaluations, Auto matched the quality of always-using-the-strongest-model while saving up to 72% in cost. Read more: [Getting more from each token: How Copilot improves context handling and model routing](https://github.blog/ai-and-ml/github-copilot/getting-more-from-each-token-how-copilot-improves-context-handling-and-model-routing/).
 
 
-## 6.2 Apply project level context engineering controls
+## 6.3 Apply project level context engineering controls
 
 Chapter 1 covered each of these controls individually. Now we apply them as **context engineering** tools. For each control: *when* it loads, *what it costs*, *what* it is, *how* to use it, and a short exercise on the duck-emporium project.
 
@@ -604,21 +866,19 @@ git checkout context-engineering-start
 cd duck-emporium
 ```
 
-## 6.2.1 System prompt & tools
-**Loaded when:** every call (automatic)
-**Context cost:** fixed overhead
+## 6.3.1 System prompt & tools
+**Loaded when:** every call (automatic);  
+**Context cost:** fixed overhead;  
 **Use for:** you do not control this directly, used implicitly
 
 The base prompt and tool definitions injected by the harness before your conversation even starts.
 
 You cannot edit it, but you can inspect it. [Enable debug mode in VS Code to see logs.](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/troubleshoot-copilot/view-logs)
 
----
-
-## 6.2.2 `copilot-instructions.md` / `AGENTS.md`
-**Loaded when:** every call (always-on)
-**Context cost:** proportional to file size
-**Use for:** non-negotiable project rules that apply _every_ interaction
+## 6.3.2 `copilot-instructions.md` / `AGENTS.md`
+**Loaded when:** every call (always-on);  
+**Context cost:** proportional to file size;  
+**Use for:** non-negotiable project rules that apply _every_ interaction. 
 
 Persistent project-level instructions. `.github/copilot-instructions.md` (one per repo, at that exact path) and `AGENTS.md` (one or more, merged root-downward) are injected into every call from the agent to the LLM automatically.
 
@@ -629,18 +889,16 @@ Persistent project-level instructions. `.github/copilot-instructions.md` (one pe
 - Do not use AI to generate instructions without reviewing them carefully, it creates bloat and the results may be even worse than without and instructions at all. [For more details read this paper.](https://arxiv.org/pdf/2602.11988)
 - Keep it short and revisit regularly. As your project evolves, some instructions may become obsolete or need adjustments.
 
-### Exercise 1: Create `copilot-instructions.md` for the duck-emporium project
+#### Exercise 1: Create `copilot-instructions.md` for the duck-emporium project
 
 Open the GitHub Copilot chat window and type `/create-instructions`. (Or in the GitHub Copilot CLI just type: `Create me a copilot-instructions.md file for this project.`). When the agent is done, review the generated instructions. Verify its quality with the help of the rules of thumb above. 
 
-If you want to have an exmaple how a decent `copilot-instructions.md` could look like: in the project root of this repo you can find a file for the whole workshop repository.
+If you want to have an example of how a decent `copilot-instructions.md` could look like: in the project root of this repo you can find a file for the whole workshop repository.
 
----
-
-## 6.2.3 Scoped instructions (`.instructions.md`)
-**Loaded when:** agent touches files matching the `applyTo` glob
-**Context cost:** on-demand (zero cost when not triggered)
-**Use for:** file-type-specific rules that would bloat always-on instructions (e.g. `documentation.instructions.md`)
+## 6.3.3 Scoped instructions (`.instructions.md`)
+**Loaded when:** agent touches files matching the `applyTo` glob;  
+**Context cost:** on-demand (zero cost when not triggered);  
+**Use for:** file-type-specific rules that would bloat always-on instructions (e.g. `documentation.instructions.md`). 
 
 Files in `.github/instructions/*.instructions.md` with a frontmatter `applyTo` glob. They inject into context *only* when the agent reads or writes a matching file.
 
@@ -654,9 +912,7 @@ As `AGENTS.md` work a little different, you can create an `AGENTS.md` file in ea
 
 </div>
 
-
-
-### Exercise 2: Create `testing.instructions.md` for the duck-emporium project
+#### Exercise 2: Create `testing.instructions.md` for the duck-emporium project
 
 Create `duck-emporium/.github/instructions/testing.instructions.md`:
 
@@ -676,18 +932,16 @@ applyTo: "**/tests/**"
 
 Ask GitHub Copilot: *"add edge-case tests for the quiz endpoint"*. The scoped instructions should load automatically for `**/tests/**` files.
 
----
-
-## 6.2.4 Custom agents (`.agent.md`)
-**Loaded when:** explicitly invoked
-**Context cost:** replaces default agent behavior for that session
-**Use for:** specialized workflows with restricted tools or persona
+## 6.3.4 Custom agents (`.agent.md`)
+**Loaded when:** explicitly invoked;  
+**Context cost:** replaces default agent behavior for that session;  
+**Use for:** specialized workflows with restricted tools or persona. 
 
 Files in `.github/agents/*.agent.md` that define a named persona with its own system instructions and tool access. Invoked via the agent picker in VS Code or `/agent` in the CLI.
 
 Create when a recurring task needs a specific persona or tool restriction. For example a "Reverse engineer" agent that can read code and create documentation of business rules, but is not allowed to edit code or run tests. 
 
-## Exercise 3: Create a "Test specialist" agent for the duck-emporium project
+#### Exercise 3: Create a "Test specialist" agent for the duck-emporium project
 
 Create `duck-emporium/.github/agents/test-specialist.agent.md`:
 
@@ -701,18 +955,16 @@ You are a testing specialist focused on improving code quality through comprehen
 files — avoid modifying production code unless specifically requested.
 ```
 
----
-
-## 6.2.5 Skills/`SKILL.md`
-**Loaded when:** agentic harness detects a matching defined task (description always loaded, full doc on match); e.g. a svg to png conversion skill
-**Context cost:** on-demand (only short description in always-on budget)
-**Use for:** packaged multi-step capabilities the agent can invoke autonomously
+## 6.3.5 Skills/`SKILL.md`
+**Loaded when:** agentic harness detects a matching defined task (description always loaded, full doc on match); e.g. a svg to png conversion skill;  
+**Context cost:** on-demand (only short description in always-on budget);  
+**Use for:** packaged multi-step capabilities the agent can invoke autonomously 
 
 A `SKILL.md` file in `.github/skills/<name>/` that describes a repeatable procedure. The harness reads all skill descriptions upfront (cheap) and loads the full document only when it matches the current task.
 
 Wrap any multi-step workflow (run tests → read failures → fix → rerun) into a skill. The agent activates it automatically or you invoke it with `/<skill-name>`.
 
-### Exercise 4: Create a "Run and fix tests" skill for the duck-emporium project
+#### Exercise 4: Create a "Run and fix tests" skill for the duck-emporium project
 
 Create `duck-emporium/.github/skills/run-and-fix-tests/SKILL.md`:
 
@@ -734,9 +986,7 @@ Ask the agent to make a risky change and verify it works. The skill will be sele
 
 -- verified until here (June 22nd)
 
----
-
-## 6.2.6 Prompt files (`.prompt.md`)
+## 6.3.6 Prompt files (`.prompt.md`)
 Loaded when: you invoke them (`/prompt-name`)
 Context cost: one-shot (only for that invocation)
 Use for: reusable, parameterized workflows triggered on demand
@@ -745,9 +995,7 @@ Use for: reusable, parameterized workflows triggered on demand
 
 **How:** Use for repeatable tasks where the *approach* is fixed and the *input* varies (e.g., `/sdd-spec` with a story ID). Unlike skills, they are user-initiated, not auto-detected.
 
----
-
-## 6.2.7 MCP tools
+## 6.3.7 MCP tools
 Loaded when: tool descriptions always loaded; results injected on use
 Context cost: descriptions are fixed overhead; results are variable per call
 Use for: connecting the agent to external data and actions (issue trackers, databases, APIs)
@@ -756,9 +1004,12 @@ Use for: connecting the agent to external data and actions (issue trackers, data
 
 **How:** Keep the number of connected MCP servers small — each server's tool descriptions consume always-on context. Only connect what the current task needs.
 
----
+<div class="tip" data-title="About writing custom MCP servers">
 
-## 6.2.8 Subagents
+> A word about writing "good" MCP servers: design them around the use case and the agent's needs. Try to avoid translating an API 1:1 into tools. If you want to learn more, listen to [this podcast with Den Delimarsky (now Anthropic, former Microsoftie 🥲), the lead maintainer of Model Context Protocol.](https://www.youtube.com/watch?v=q0SqUyGjesI&list=PLjULwdJUtFdi5CGz6pKBJvYPjZ8NOxoWQ&index=3)
+</div>
+
+## 6.3.8 Subagents
 Loaded when: spawned by the main agent during execution
 Context cost: separate context window (does not pollute the main session)
 Use for: offloading research or exploration to keep the main session lean
@@ -767,9 +1018,7 @@ Use for: offloading research or exploration to keep the main session lean
 
 **How:** Useful for large codebases where searching would flood the main context. The subagent reads many files, returns a short summary.
 
----
-
-## 6.2.9 Copilot Memory
+## 6.3.9 Copilot Memory
 Loaded when: every call (automatic, cross-surface)
 Context cost: small per memory entry
 Use for: persistent learnings the agent should remember across sessions
@@ -778,9 +1027,7 @@ Use for: persistent learnings the agent should remember across sessions
 
 **How:** Let the agent learn from corrections. If you repeatedly fix the same mistake, tell it to remember the rule.
 
----
-
-## 6.2.10 Summary
+## 6.3.10 Summary
 
 | Control | Loaded when | Context cost | Use for |
 |---------|-------------|--------------|---------|
@@ -804,8 +1051,6 @@ Use for: persistent learnings the agent should remember across sessions
 4. **A one-shot parameterized task?** → Prompt file (`.prompt.md`)
 5. **Needs a restricted tool set or persona?** → Custom agent (`.agent.md`)
 6. **Needs external data?** → MCP server
-
----
 
 ## 6.3 The miss → diagnosis → fix loop
 
@@ -862,7 +1107,413 @@ For teams scaling context engineering across repositories:
 
 ---
 
-# Chapter 8 (coming soon) - GitHub Copilot SDK
+# Chapter 8 — The GitHub Copilot SDK
+
+So far you have *used* Copilot — in the IDE, in Chat, in the CLI. In this chapter you **embed** Copilot into your own code. The [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk) lets you talk to Copilot programmatically: open a session, send a prompt, stream the response, and — most interestingly — define **tools** in your own codebase that Copilot decides when to call.
+
+<div class="info" data-title="SDK vs. CLI">
+
+> The CLI from Chapter 1 is for **terminal workflows**. The SDK is for **embedding Copilot inside your apps, scripts, services and pipelines**. Under the hood the SDK starts and manages a Copilot CLI process for you and speaks JSON-RPC to it — so everything you learned about authentication, models and MCP in earlier chapters still applies.
+
+</div>
+
+By the end of this chapter you can:
+
+- Install and configure the SDK in a TypeScript/Node project.
+- Send messages and receive responses programmatically.
+- Stream responses token by token for interactive UX.
+- Define custom tools that Copilot can call autonomously.
+- Build a small interactive assistant that uses your tools.
+
+## 8.1 Mental model: the power grid
+
+The Copilot CLI is like plugging a lamp into a wall outlet — it works great, you get light immediately. The SDK is like connecting straight to the **power grid**:
+
+- Build your own appliances (custom apps and assistants).
+- Control how the power flows (streaming, tool wiring, system messages).
+- Connect complex systems (multi-tool assistants, automation, pipelines).
+
+The CLI gives you a flashlight; the SDK lets you build a power plant.
+
+## 8.2 How the SDK fits together
+
+| Component   | What it does                                                  |
+| ----------- | ------------------------------------------------------------- |
+| **Client**  | Starts and manages the connection to the Copilot CLI process. |
+| **Session** | A conversation context — like a single Chat thread.           |
+| **Messages**| Prompts you send and responses you get back.                  |
+| **Streaming** | Receive response chunks in real time, word by word.         |
+| **Tools**   | Functions you define in your code that Copilot can invoke.    |
+
+```text
+Your app  →  Copilot SDK  →  Copilot CLI (managed for you)  →  GitHub Copilot
+   ↑                                                                  ↓
+   ←──────────── responses / tool calls / streaming ←─────────────────┘
+```
+
+The flow is always the same: create a client, open a session, send a message, react to events.
+
+<div class="info" data-title="Other languages">
+
+> This workshop's examples are TypeScript first, in line with the rest of the labs. The same SDK is available for **Python, Go, Rust, .NET and Java** — the API shape (`Client` → `Session` → tools/events) is identical, only the syntax differs. Pick whichever language matches your stack.
+
+</div>
+
+## 8.3 Prerequisites
+
+Before starting, double-check:
+
+- **GitHub Copilot CLI** installed and authenticated (Chapter 1.2).
+- **Node.js 20+** with npm.
+
+```bash
+copilot --version
+node --version    # 20.x or higher
+```
+
+## 8.4 Hands-on: a weather assistant in TypeScript
+
+You will build a small assistant in five steps: bare prompt → streaming → custom tool → REPL. Each step is independently runnable.
+
+### 8.4.1 Scaffold
+
+```bash
+mkdir copilot-sdk-lab && cd copilot-sdk-lab
+npm init -y --init-type module
+npm install @github/copilot-sdk tsx
+```
+
+<div class="info" data-title="What is tsx?">
+
+> `tsx` is a TypeScript runner that executes `.ts` files directly — no separate compile step. Think of it as a faster `ts-node`. You will invoke it via `npx tsx <file>.ts`.
+
+</div>
+
+### 8.4.2 Your first programmatic prompt
+
+Create `index.ts`:
+
+```ts
+import { CopilotClient } from "@github/copilot-sdk";
+
+const client = new CopilotClient();
+const session = await client.createSession({ model: "auto" });
+
+const response = await session.sendAndWait({ prompt: "What is 2 + 2?" });
+console.log(response?.data.content);
+
+await client.stop();
+process.exit(0);
+```
+
+Run it:
+
+```bash
+npx tsx index.ts
+```
+
+Five lines of real code and Copilot is answering you from inside a Node process. The SDK started the CLI behind the scenes, reused your existing auth, opened a session, sent the prompt and shut everything down cleanly.
+
+### 8.4.3 Stream the response
+
+Waiting for the whole response before printing anything feels sluggish. Listen for `assistant.message_delta` events and write each chunk as it arrives.
+
+Replace `index.ts`:
+
+```ts
+import { CopilotClient } from "@github/copilot-sdk";
+
+const client = new CopilotClient();
+const session = await client.createSession({
+  model: "auto",
+  streaming: true,
+});
+
+session.on("assistant.message_delta", (event) => {
+  process.stdout.write(event.data.deltaContent);
+});
+
+session.on("session.idle", () => {
+  process.stdout.write("\n");
+});
+
+await session.sendAndWait({
+  prompt: "Explain what the GitHub Copilot SDK does in two sentences.",
+});
+
+await client.stop();
+process.exit(0);
+```
+
+Run it again — the answer now appears word by word, like a real chat.
+
+### 8.4.4 Define a custom tool
+
+This is where the SDK earns its keep. You can register **tools** — typed functions in your own code — and Copilot will decide when to call them based on the user's prompt. No prompt engineering required; the tool's `description` is enough.
+
+Replace `index.ts`:
+
+```ts
+import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";
+
+const getWeather = defineTool("get_weather", {
+  description: "Get the current weather for a city",
+  parameters: {
+    type: "object",
+    properties: {
+      city: { type: "string", description: "The city name" },
+    },
+    required: ["city"],
+  },
+  handler: async ({ city }: { city: string }) => {
+    // In a real app this is where you'd call a weather API.
+    const conditions = ["sunny", "cloudy", "rainy", "partly cloudy"];
+    const temp = Math.floor(Math.random() * 15) + 15;
+    const condition = conditions[Math.floor(Math.random() * conditions.length)];
+    return { city, temperature: `${temp}°C`, condition };
+  },
+});
+
+const client = new CopilotClient();
+const session = await client.createSession({
+  model: "auto",
+  streaming: true,
+  tools: [getWeather],
+  onPermissionRequest: approveAll,
+});
+
+session.on("assistant.message_delta", (event) => {
+  process.stdout.write(event.data.deltaContent);
+});
+session.on("session.idle", () => process.stdout.write("\n"));
+
+await session.sendAndWait({
+  prompt: "What's the weather like in Munich and Bonn?",
+});
+
+await client.stop();
+process.exit(0);
+```
+
+Run it. Notice what just happened: Copilot read your prompt, decided it needed weather data for two cities, called `get_weather` **twice** (once per city), and wove the results into a natural-language reply. You wrote zero prompt-engineering glue.
+
+<div class="warning" data-title="approveAll is a workshop convenience">
+
+> `approveAll` accepts every tool invocation without confirmation. That's fine for a lab. In production code, implement `onPermissionRequest` properly so users (or policy) can approve, deny or rate-limit tool calls.
+
+</div>
+
+### 8.4.5 Build an interactive REPL
+
+Wrap the same setup in a chat loop. Create `weather-assistant.ts`:
+
+```ts
+import { CopilotClient, defineTool, approveAll } from "@github/copilot-sdk";
+import * as readline from "node:readline";
+
+const getWeather = defineTool("get_weather", {
+  description: "Get the current weather for a city",
+  parameters: {
+    type: "object",
+    properties: {
+      city: { type: "string", description: "The city name" },
+    },
+    required: ["city"],
+  },
+  handler: async ({ city }: { city: string }) => {
+    const conditions = ["sunny", "cloudy", "rainy", "partly cloudy"];
+    const temp = Math.floor(Math.random() * 15) + 15;
+    const condition = conditions[Math.floor(Math.random() * conditions.length)];
+    return { city, temperature: `${temp}°C`, condition };
+  },
+});
+
+const client = new CopilotClient();
+const session = await client.createSession({
+  model: "auto",
+  streaming: true,
+  tools: [getWeather],
+  onPermissionRequest: approveAll,
+});
+
+session.on("assistant.message_delta", (event) => {
+  process.stdout.write(event.data.deltaContent);
+});
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+console.log("🌤️  Weather Assistant (type 'exit' to quit)");
+console.log("   Try: 'What's the weather in Berlin?'\n");
+
+const prompt = () => {
+  rl.question("You: ", async (input) => {
+    if (input.toLowerCase() === "exit") {
+      await client.stop();
+      rl.close();
+      return;
+    }
+    process.stdout.write("Assistant: ");
+    await session.sendAndWait({ prompt: input });
+    console.log("\n");
+    prompt();
+  });
+};
+
+prompt();
+```
+
+Run it:
+
+```bash
+npx tsx weather-assistant.ts
+```
+
+Example session:
+
+```text
+🌤️  Weather Assistant (type 'exit' to quit)
+   Try: 'What's the weather in Berlin?'
+
+You: What's the weather in Seattle?
+Assistant: It's currently 22°C and cloudy in Seattle.
+
+You: How about Munich and London?
+Assistant: Sure — Munich is 27°C and sunny, London is 19°C and rainy.
+
+You: exit
+```
+
+## 8.5 How tool calling actually works
+
+When you register a tool, you tell Copilot three things:
+
+1. **What it does** — the `description`.
+2. **What it needs** — the JSON-schema `parameters`.
+3. **What to run** — the `handler`.
+
+The runtime flow:
+
+```text
+User: "What's the weather in Munich?"
+   │
+   ▼
+Copilot matches the question to the tool's description
+   │
+   ▼
+Copilot emits a tool call: get_weather({ city: "Munich" })
+   │
+   ▼
+SDK runs YOUR handler in your process
+   │
+   ▼
+Result returned: { city: "Munich", temperature: "22°C", condition: "sunny" }
+   │
+   ▼
+Copilot composes the final natural-language answer
+```
+
+<div class="tip" data-title="Key insight">
+
+> You don't prompt-engineer when Copilot should use your tool. You **describe** what it does, clearly, and Copilot figures out the rest. Treat tool descriptions like API documentation: be precise about inputs, outputs and side effects.
+
+</div>
+
+## 8.6 Going further
+
+Once the basics click, these are the most useful next features.
+
+### 8.6.1 Plug in MCP servers
+
+Give your app the same MCP power as the IDE and CLI:
+
+```ts
+const session = await client.createSession({
+  mcpServers: {
+    github: {
+      type: "http",
+      url: "https://api.githubcopilot.com/mcp/",
+    },
+  },
+});
+```
+
+### 8.6.2 Define custom agents
+
+Bake specialized personas into the session — exactly the same shape as Chapter 1.5:
+
+```ts
+const session = await client.createSession({
+  customAgents: [
+    {
+      name: "pr-reviewer",
+      displayName: "PR Reviewer",
+      description: "Reviews pull requests for best practices",
+      prompt:
+        "You are an expert code reviewer. Focus on security, performance, and maintainability.",
+    },
+  ],
+});
+```
+
+### 8.6.3 Set a system message
+
+Control tone, scope and guardrails for the whole session:
+
+```ts
+const session = await client.createSession({
+  systemMessage: {
+    content:
+      "You are an assistant for our engineering team. Be concise. Never invent file paths.",
+  },
+});
+```
+
+### 8.6.4 Connect to a long-running CLI
+
+For debugging, multi-process setups or sharing a session across consumers, run the CLI headless and connect to it:
+
+```bash
+copilot --headless --port 4321
+```
+
+```ts
+const client = new CopilotClient({ cliUrl: "localhost:4321" });
+```
+
+## 8.7 Do this now — challenges
+
+Pick one. They build directly on the lab above.
+
+1. **Add a second tool.** Define `get_time` that returns the current time for a timezone. Ask the assistant *"What's the weather and time in Tokyo?"* — confirm Copilot calls **both** tools in one turn.
+2. **Tighten permissions.** Replace `approveAll` with an `onPermissionRequest` handler that logs each tool call and prompts on stdin before approving. Notice how the agent waits politely.
+3. **Build a Duck Emporium assistant.** Reuse the user stories and data model from Chapter 2. Define two tools: `search_ducks(query)` reads your seed data; `add_duck(name, theme, price_cents)` appends a new entry. Wire them into a REPL and chat with your shop's inventory.
+
+<div class="tip" data-title="Combine with SDD">
+
+> Treat the assistant itself as a feature. Write a `user-stories/copilot-sdk-assistant.md`, run it through `/sdd-spec → /sdd-plan → /sdd-tasks → /sdd-implement` from Chapter 2. The SDK lab becomes a perfect end-to-end test of your SDD workflow.
+
+</div>
+
+## 8.8 Common mistakes
+
+| Mistake                              | Symptom                                       | Fix                                       |
+| ------------------------------------ | --------------------------------------------- | ----------------------------------------- |
+| Forgetting `await client.stop()`     | CLI process lingers after the script ends.    | Always stop the client before exiting.    |
+| Not setting `streaming: true`        | `assistant.message_delta` never fires.        | Enable streaming in `createSession`.      |
+| Tool handler returns a raw string    | Copilot gets confused or errors out.          | Return a plain object describing results. |
+| Missing `process.exit(0)`            | Script hangs after the last response.         | Exit explicitly at the end of the script. |
+| Logging tool calls only on success   | Failures vanish silently into the session.    | Log inside the handler, before returning. |
+
+## 8.9 Key takeaways
+
+1. **The SDK embeds Copilot in your apps.** Go beyond the terminal — wire intelligence into your own tools, services and automations.
+2. **Five lines to start.** Create a client, open a session, send a message. That's the minimum viable program.
+3. **Streaming makes it feel alive.** Subscribe to `assistant.message_delta` and write as chunks arrive.
+4. **Tools are the superpower.** Describe what your code can do; let Copilot decide when to call it.
+5. **Same patterns, any language.** TypeScript, Python, Go, Rust, .NET, Java — same shape, same mental model.
 
 ---
 

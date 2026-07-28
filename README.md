@@ -10,11 +10,15 @@ Or read the raw markdown: [`docs/workshop.md`](docs/workshop.md).
 
 ## What you'll learn
 
-1. **Getting started with GitHub Copilot**: completions, Chat, custom agents, the Copilot CLI, custom instructions, prompt files, skills and MCP servers. A single broad chapter for newcomers.
-2. **Spec-Driven Development (SDD)**: Learn about SDD. Make specifications, not vibes, drive what Copilot builds. End-to-end TypeScript/Node example.
-3. **spec-kit**: an open-source toolkit by the GitHub team that formalizes and extends the loop you just did by hand. It can be used in combination with GitHub Copilot but also many more agentic AIs for coding.
-4. (soon) **Squad**: an open-source framework for orchestrating multi-agent development teams on top of GitHub Copilot.
-5. (soon) **SDD for app modernization**: a dedicated chapter on how to use SDD to modernize legacy apps.
+1. **Getting Started with GitHub Copilot**: a single broad chapter for anyone who has never (or barely) used GitHub Copilot. It covers inline completions, Chat, Agent mode, the Copilot CLI, custom instructions, prompt files, tools and MCP servers.
+2. **Spec-Driven Development (SDD)**: You will learn how to make specifications, drive what GitHub Copilot builds for you, and you will do it end-to-end on a small TypeScript/Node feature.
+3. **Introduction of [spec-kit](https://github.com/github/spec-kit)** as a tool to use spec driven development conveniently with most agentic coding tools.
+4. (soon) **How to use [squad](https://github.com/bradygaster/squad)** open-source framework for orchestrating multi-agent development teams.
+5. **App modernization**: a dedicated chapter on how to use GitHub Copilot to modernize legacy apps, with two hands-on tracks (spec-kit-driven and GitHub Copilot-native custom agents + prompts).
+6. **Context Engineering**: Theory foundations (LLMs, agents, context rot) followed by hands-on exercises adding instructions, scoped rules, and skills to a pre-built project.
+7. (soon) **Agentic Workflows**
+8. **The GitHub Copilot SDK**: Embed Copilot directly into your own apps — open sessions, stream responses, and let Copilot call custom tools you define in TypeScript/Node.
+9. **Security, Sandboxing and Guardrails**: How to use Copilot safely in your organization, and how to build your own guardrails for your own agentic AI.
 
 ## Pre-reqs
 
