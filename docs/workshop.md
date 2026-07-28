@@ -168,7 +168,7 @@ Create `.github/prompts/add-test.prompt.md`:
 
 ```markdown
 ---
-mode: agent
+agent: agent
 description: Add unit tests
 ---
 Look at the source I provide. Write unit tests that cover the main exported functions. Place tests next to the source as `<filename>.test.ts` and run them with `vitest`.
@@ -194,7 +194,7 @@ Create `.github/agents/test-specialist.agent.md`:
 ---
 name: test-specialist
 description: Focuses on test coverage and quality without modifying production code
-tools: ["codebase", "search", "editFiles", "runCommands"]
+tools: ["search", "edit", "execute"]
 ---
 You are a testing specialist focused on improving code quality through comprehensive testing. Analyze existing tests, identify coverage gaps, and write unit, integration, and end-to-end tests. Focus only on test
 files — avoid modifying production code unless specifically requested.
@@ -949,7 +949,7 @@ Create `duck-emporium/.github/agents/test-specialist.agent.md`:
 ---
 name: test-specialist
 description: Focuses on test coverage and quality without modifying production code
-tools: ["codebase", "search", "editFiles", "runCommands"]
+tools: ["search", "edit", "execute"]
 ---
 You are a testing specialist focused on improving code quality through comprehensive testing. Analyze existing tests, identify coverage gaps, and write unit, integration, and end-to-end tests. Focus only on test
 files — avoid modifying production code unless specifically requested.
@@ -984,25 +984,59 @@ description: Run the test suite and fix any failures. Use when asked to run test
 
 Ask the agent to make a risky change and verify it works. The skill will be selected automatically by the agentic harness.
 
--- verified until here (June 22nd)
-
 ## 6.3.6 Prompt files (`.prompt.md`)
-Loaded when: you invoke them (`/prompt-name`)
-Context cost: one-shot (only for that invocation)
-Use for: reusable, parameterized workflows triggered on demand
+**Loaded when:** you invoke them (`/prompt-name`)
+**Context cost:** one-shot (only for that invocation)
+**Use for:** reusable, parameterized workflows triggered on demand
 
-**What:** Markdown files in `.github/prompts/` with optional frontmatter (mode, description, variables). They appear as slash commands in Chat.
+Markdown files in `.github/prompts/` with optional frontmatter (mode, description, variables). They appear as slash commands in Chat.
 
-**How:** Use for repeatable tasks where the *approach* is fixed and the *input* varies (e.g., `/sdd-spec` with a story ID). Unlike skills, they are user-initiated, not auto-detected.
+Use for repeatable tasks where the *approach* is fixed and the *input* varies (e.g., `/sdd-spec` with a story ID). Unlike skills, they are user-initiated, not auto-detected.
+
+#### Exercise 5: Create an endpoint-review prompt for the duck-emporium project
+
+Create `duck-emporium/.github/prompts/review-endpoint.prompt.md`:
+
+```markdown
+---
+name: review-endpoint
+description: Review one API endpoint without changing code.
+---
+Review the `${input:endpoint}` endpoint in this project.
+
+1. Find its route, domain logic, error mapping, and tests.
+2. Check whether success responses, validation failures, and domain errors are covered.
+3. Report findings with file references, ordered by severity.
+4. Do not edit any files or run the full test suite.
+```
+
+Invoke `/review-endpoint` in Chat and enter `quiz` when prompted. Review which files the agent chooses and whether it follows the fixed review procedure. Then invoke it again with `cart`: the workflow stays the same while only the input changes.
+
+Start a normal Chat request afterward with *"review the cart endpoint"* and compare the result. The prompt's instructions are one-shot context: they apply when you invoke `/review-endpoint`, but do not become permanent project rules.
 
 ## 6.3.7 MCP tools
-Loaded when: tool descriptions always loaded; results injected on use
-Context cost: descriptions are fixed overhead; results are variable per call
-Use for: connecting the agent to external data and actions (issue trackers, databases, APIs)
+**Loaded when:** tool descriptions always loaded; results injected on use
+**Context cost:** descriptions are fixed overhead; results are variable per call
+**Use for:** connecting the agent to external data and actions (issue trackers, databases, APIs)
 
-**What:** [Model Context Protocol](https://modelcontextprotocol.io) servers that expose tools the agent can call. Configured in `.vscode/mcp.json` (VS Code) or `~/.copilot/mcp-config.json` (CLI).
+[Model Context Protocol](https://modelcontextprotocol.io) servers expose tools the agent can call.
 
-**How:** Keep the number of connected MCP servers small — each server's tool descriptions consume always-on context. Only connect what the current task needs.
+- **In VS Code:** open the Extensions view and search for `@mcp` to browse the MCP gallery. Use `MCP: Add Server` from the Command Palette for a guided setup, or `MCP: List Servers` to inspect and manage installed servers. Workspace configuration lives in `.vscode/mcp.json`; run `MCP: Open User Configuration` for servers available across all workspaces.
+- **In the Copilot CLI:** run `copilot mcp list` from your shell, or `/mcp show` inside an interactive Copilot session, to see configured servers and their tools. Add one with `copilot mcp add ...` or `/mcp add`. To browse the GitHub MCP Registry from an interactive session, enable experimental features with `/experimental on`, then use `/mcp search` or `/mcp search <query>`. User configuration lives in `~/.copilot/mcp-config.json`; project-level configuration can live in `.mcp.json` or `.github/mcp.json`.
+
+In general, keep the number of connected MCP servers small — each server's tool descriptions consume always-on context. Only connect what the current task needs.
+
+#### Exercise 6: Use Playwright MCP to test the rendered workshop
+
+In VS Code, open the Extensions view and search for `@mcp playwright`. Install the Playwright MCP server and confirm that you trust it. Then ask Copilot:
+
+```text
+Using the Playwright MCP server, smoke-test the rendered workshop at https://moaw.dev/workshop/gh:jkordick/ghcp-advanced/main/docs/. At a desktop viewport, verify the workshop title, use the navigation to open Chapter 6 — Context Engineering, and confirm that "How agents actually work" is visible. Capture a screenshot. Then resize to a mobile viewport, verify that Chapter 6 remains reachable through the navigation and capture a second screenshot. Report each check and its result. Do not edit repository files.
+```
+
+Review the tool calls before approving them. The agent receives the client-rendered page, accessible element information, screenshots, and interaction results only when the Playwright tools run.
+
+Now disable the Playwright MCP server from the Extensions view or with `MCP: List Servers`, and repeat the request in a fresh Chat. Compare whether the agent can still interact with the client-rendered workshop, change the viewport, and produce visual evidence rather than merely reason about the source code. Re-enable or uninstall the server when you are done.
 
 <div class="tip" data-title="About writing custom MCP servers">
 
@@ -1010,22 +1044,54 @@ Use for: connecting the agent to external data and actions (issue trackers, data
 </div>
 
 ## 6.3.8 Subagents
-Loaded when: spawned by the main agent during execution
-Context cost: separate context window (does not pollute the main session)
-Use for: offloading research or exploration to keep the main session lean
+**Loaded when:** spawned by the main agent during execution
+**Context cost:** separate context window (does not pollute the main session)
+**Use for:** offloading research or exploration to keep the main session lean
 
-**What:** The main agent can spawn a child agent (e.g., the Explore subagent) with its own context window. Results are summarized back into the parent.
+The main agent can spawn a child agent (e.g., the Explore subagent) with its own context window. Results are summarized back into the parent.
 
-**How:** Useful for large codebases where searching would flood the main context. The subagent reads many files, returns a short summary.
+Useful for large codebases where searching would flood the main context. The subagent reads many files, returns a short summary.
+
+#### Exercise 7: Delegate a broad investigation to Explore
+
+Ask Copilot:
+
+```text
+Delegate this investigation to the Explore subagent: inventory every API endpoint under src/routes/, map each endpoint to its domain logic and contract tests, and identify missing contract-test coverage. This is read-only. Return only a concise table and unresolved questions.
+```
+
+Review the subagent activity and the summary returned to the main conversation. Notice that the child can inspect many files while the parent receives only the distilled result.
+
+Start a fresh Chat and ask for the same inventory without requesting a subagent. Compare the number of files and tool results added directly to the main conversation with the delegated run. The goal is not a different answer; it is keeping broad exploration out of the context you still need for follow-up work.
 
 ## 6.3.9 Copilot Memory
-Loaded when: every call (automatic, cross-surface)
-Context cost: small per memory entry
-Use for: persistent learnings the agent should remember across sessions
+**Loaded when:** every call (automatic, cross-surface)
+**Context cost:** small per memory entry
+**Use for:** persistent learnings the agent should remember across sessions
 
-**What:** Facts the agent stores and retrieves automatically across conversations — preferences, past decisions, project-specific learnings.
+Facts the agent stores and retrieves automatically across conversations — preferences, past decisions, project-specific learnings.
 
-**How:** Let the agent learn from corrections. If you repeatedly fix the same mistake, tell it to remember the rule.
+Let the agent learn from corrections. If you repeatedly fix the same mistake, tell it to remember the rule.
+
+You can see all existing memory files in VS Code using the Command Palette `Chat: Show Memory Files`. In the CLI you can use `/memory`to interact with your memories.
+
+#### Exercise 8: Turn a correction into memory
+
+In Chat, tell Copilot:
+
+```text
+For this project, remember that endpoint reviews should use the columns Severity, Endpoint, Evidence, and Recommendation, and should not suggest frontend changes.
+```
+
+Ask what it remembered and verify that the stored rule is accurate. Then start a fresh Chat and ask:
+
+```text
+Review the checkout endpoint.
+```
+
+Do not repeat the formatting preference. Check whether the response uses the four columns and stays within the API scope. Then ask Copilot to forget the preference and repeat the review in another fresh Chat to confirm that memory is editable, not permanent configuration.
+
+Never store secrets, credentials, personal data, or temporary task details in memory. Durable repository rules still belong in version-controlled instructions; memory is better for lightweight preferences and learnings.
 
 ## 6.3.10 Summary
 
