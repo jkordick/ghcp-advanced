@@ -895,7 +895,18 @@ Open the GitHub Copilot chat window and type `/create-instructions`. (Or in the 
 
 If you want to have an example of how a decent `copilot-instructions.md` could look like: in the project root of this repo you can find a file for the whole workshop repository.
 
-## 6.3.3 Scoped instructions (`.instructions.md`)
+## 6.3.3 Evolving the AGENTS.md: The miss → diagnosis → fix loop
+
+Even with good instructions, the agent will get things wrong. Context engineering is iterative, treat each agent mistake as a concrete chance for improvement.
+
+1. **Miss.** The agent adds a new error class but does not register it in `error-mapper.ts` → API returns 500.
+2. **Diagnose.** Missing context? Conflicting rules? Context overload? Model limitation?
+3. **Fix.** Add to `AGENTS.md`: `- When adding a new domain error, also register it in src/middleware/error-mapper.ts.`
+4. **Verify.** Undo, re-run the same prompt, confirm the mistake is gone.
+
+Every miss becomes a rule. Every rule is verifiable. Instructions evolve with the project.
+
+## 6.3.4 Scoped instructions (`.instructions.md`)
 **Loaded when:** agent touches files matching the `applyTo` glob;  
 **Context cost:** on-demand (zero cost when not triggered);  
 **Use for:** file-type-specific rules that would bloat always-on instructions (e.g. `documentation.instructions.md`). 
@@ -932,7 +943,7 @@ applyTo: "**/tests/**"
 
 Ask GitHub Copilot: *"add edge-case tests for the quiz endpoint"*. The scoped instructions should load automatically for `**/tests/**` files.
 
-## 6.3.4 Custom agents (`.agent.md`)
+## 6.3.5 Custom agents (`.agent.md`)
 **Loaded when:** explicitly invoked;  
 **Context cost:** replaces default agent behavior for that session;  
 **Use for:** specialized workflows with restricted tools or persona. 
@@ -955,7 +966,7 @@ You are a testing specialist focused on improving code quality through comprehen
 files — avoid modifying production code unless specifically requested.
 ```
 
-## 6.3.5 Skills/`SKILL.md`
+## 6.3.6 Skills/`SKILL.md`
 **Loaded when:** agentic harness detects a matching defined task (description always loaded, full doc on match); e.g. a svg to png conversion skill;  
 **Context cost:** on-demand (only short description in always-on budget);  
 **Use for:** packaged multi-step capabilities the agent can invoke autonomously 
@@ -984,7 +995,7 @@ description: Run the test suite and fix any failures. Use when asked to run test
 
 Ask the agent to make a risky change and verify it works. The skill will be selected automatically by the agentic harness.
 
-## 6.3.6 Prompt files (`.prompt.md`)
+## 6.3.7 Prompt files (`.prompt.md`)
 **Loaded when:** you invoke them (`/prompt-name`)
 **Context cost:** one-shot (only for that invocation)
 **Use for:** reusable, parameterized workflows triggered on demand
@@ -1014,7 +1025,7 @@ Invoke `/review-endpoint` in Chat and enter `quiz` when prompted. Review which f
 
 Start a normal Chat request afterward with *"review the cart endpoint"* and compare the result. The prompt's instructions are one-shot context: they apply when you invoke `/review-endpoint`, but do not become permanent project rules.
 
-## 6.3.7 MCP tools
+## 6.3.8 MCP tools
 **Loaded when:** tool descriptions always loaded; results injected on use
 **Context cost:** descriptions are fixed overhead; results are variable per call
 **Use for:** connecting the agent to external data and actions (issue trackers, databases, APIs)
@@ -1043,7 +1054,7 @@ Now disable the Playwright MCP server from the Extensions view or with `MCP: Lis
 > A word about writing "good" MCP servers: design them around the use case and the agent's needs. Try to avoid translating an API 1:1 into tools. If you want to learn more, listen to [this podcast with Den Delimarsky (now Anthropic, former Microsoftie 🥲), the lead maintainer of Model Context Protocol.](https://www.youtube.com/watch?v=q0SqUyGjesI&list=PLjULwdJUtFdi5CGz6pKBJvYPjZ8NOxoWQ&index=3)
 </div>
 
-## 6.3.8 Subagents
+## 6.3.9 Subagents
 **Loaded when:** spawned by the main agent during execution
 **Context cost:** separate context window (does not pollute the main session)
 **Use for:** offloading research or exploration to keep the main session lean
@@ -1064,7 +1075,7 @@ Review the subagent activity and the summary returned to the main conversation. 
 
 Start a fresh Chat and ask for the same inventory without requesting a subagent. Compare the number of files and tool results added directly to the main conversation with the delegated run. The goal is not a different answer; it is keeping broad exploration out of the context you still need for follow-up work.
 
-## 6.3.9 Copilot Memory
+## 6.3.10 Copilot Memory
 **Loaded when:** every call (automatic, cross-surface)
 **Context cost:** small per memory entry
 **Use for:** persistent learnings the agent should remember across sessions
@@ -1093,79 +1104,38 @@ Do not repeat the formatting preference. Check whether the response uses the fou
 
 Never store secrets, credentials, personal data, or temporary task details in memory. Durable repository rules still belong in version-controlled instructions; memory is better for lightweight preferences and learnings.
 
-## 6.3.10 Summary
+## 6.4 Summary
 
 | Control | Loaded when | Context cost | Use for |
 |---------|-------------|--------------|---------|
 | **System prompt & tools** | Every call | Fixed | Harness internals (not user-controlled) |
-| **`copilot-instructions.md` / `AGENTS.md`** | Every call | Proportional to file size | Non-negotiable project rules — keep small |
+| **`copilot-instructions.md` / `AGENTS.md`** | Every call | Proportional to file size | Non-negotiable project rules; keep small |
 | **Scoped instructions** (`.instructions.md`) | Matching files touched | On-demand | File-type-specific rules |
-| **Custom agents** (`.agent.md`) | When invoked | Replaces default | Specialized workflows with restricted tools |
+| **Custom agents** (`.agent.md`) | When invoked | Replaces default if needed | Specialized workflows with restricted tools |
 | **Skills** (`SKILL.md`) | Task match detected | On-demand | Packaged multi-step capabilities |
 | **Prompt files** (`.prompt.md`) | When you invoke them | One-shot | Reusable parameterized workflows |
 | **MCP tools** | Descriptions always; results on use | Descriptions fixed, results variable | External data and actions |
 | **Subagents** | When spawned | Separate window | Offload research, keep main session lean |
 | **Copilot Memory** | Every call | Small per entry | Persistent cross-session learnings |
 
-**Key insight:** always-on controls eat context on every call. Push detail to on-demand controls (scoped instructions, skills, subagents).
-
-### The layering decision framework
-
-1. **Every interaction in this repo?** → `copilot-instructions.md` / `AGENTS.md`
-2. **Only for specific file types?** → Scoped `.instructions.md` with `applyTo` glob
-3. **A specific multi-step workflow?** → Skill (`SKILL.md`)
-4. **A one-shot parameterized task?** → Prompt file (`.prompt.md`)
-5. **Needs a restricted tool set or persona?** → Custom agent (`.agent.md`)
-6. **Needs external data?** → MCP server
-
-## 6.3 The miss → diagnosis → fix loop
-
-Even with good instructions, the agent will get things wrong. Context engineering is iterative — treat agent mistakes as **incidents**.
-
-1. **Miss.** The agent adds a new error class but does not register it in `error-mapper.ts` → API returns 500.
-2. **Diagnose.** Missing context? Conflicting rules? Context overload? Model limitation?
-3. **Fix.** Add to `AGENTS.md`: `- When adding a new domain error, also register it in src/middleware/error-mapper.ts.`
-4. **Verify.** Undo, re-run the same prompt, confirm the mistake is gone.
-
-<div class="tip" data-title="Do this now">
-
-> Ask: *"add a `DuckOutOfStockError` that returns 409 when adding an out-of-stock duck to the cart"*. If the agent misses the error mapper, add a rule, undo, re-run.
-
-</div>
-
-Every miss becomes a rule. Every rule is verifiable. Instructions evolve with the project.
-
-## 6.4 Anti-patterns to avoid
+## 6.5 Anti-patterns to avoid
 
 | Anti-pattern | Why it hurts | Fix |
 |-------------|-------------|-----|
-| **Dumping everything in `copilot-instructions.md`** | Tokens wasted every call, context rot | Move file-specific rules to scoped instructions |
-| **Using AI to generate instructions** | Verbose, vague, unmaintainable | Write yourself — concise, verifiable, from real misses |
-| **Write once, forget forever** | Drift as project evolves | Review and prune regularly |
-| **Contradictory rules across layers** | Unpredictable behavior | Each rule lives in exactly one place |
+| **Dumping everything in `copilot-instructions.md`/one `AGENTS.md`** | Tokens wasted every call, context rot | Move file-specific rules to scoped instructions/`AGENTS.md` |
+| **Using AI only to generate instructions** | Verbose, vague, unmaintainable | generate draft, apply human oversight; be concise, use verifiable |
+| **Write once, forget forever** | Drift as project evolves | Review regularly |
+| **Contradictory rules across layers** | Conflicting information | Each rule lives in exactly one place and is maintained at exactly one place |
 | **No stop signals** | Agent over-extends, modifies wrong files | Explicit boundaries ("do not modify X") |
 | **Overfilling the context window** | Lost-in-the-middle, recency bias | Fresh sessions, `/compact`, smaller steps |
 
-## 6.5 Going further
-
-<div class="tip" data-title="Practical takeaway">
-
-> Start new chat sessions for new tasks. Use `/compact` in the CLI to shrink context. Break large tasks into focused steps.
-
-</div>
+## 6.6 Going further
 
 For teams scaling context engineering across repositories:
 
 - **[AgentRC](https://github.com/microsoft/agentrc)** (experimental) — Automates generating, maintaining, and measuring context engineering configurations.
-- **[thisistheway.to](https://thisistheway.to/ai/)** — Treating agent misses as incidents.
 - **[Copilot CLI Plugins](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-plugins)** — Distribute reusable instructions and skills across repositories.
 - **[Agent Package Manager (APM)](https://github.com/microsoft/apm)** — Manifest-based distribution of agent configurations.
-
-<div class="tip" data-title="One thing to try tomorrow">
-
-> Open any project you work on daily. Think about the last three times the agent got something wrong. Could a single line of instruction have prevented it? Add that line.
-
-</div>
 
 ---
 
