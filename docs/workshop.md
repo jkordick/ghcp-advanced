@@ -799,7 +799,7 @@ Phase 4 stops at emitting reviewable artifacts. Actually running `az deployment`
 
 ## 5.7 Off-the-shelf — the GitHub Copilot modernization agents
 
-Everything up to here you assembled yourself out of Copilot primitives: prompt files, custom agents, spec-kit loops. Microsoft ships a **productized** version of the same idea — [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview) — for the stacks where the modernization *target* is already well known: Java, .NET and C++ upgrades, plus migrations to Azure.
+Everything up to here you assembled yourself out of Copilot primitives: prompt files, custom agents, spec-kit loops. Microsoft ships a **productized** version of the same idea — [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview) — for the stacks where the modernization *target* is already well known: runtime and framework upgrades for Java, .NET and C++, plus Azure migration for Java and .NET.
 
 It comes in two surfaces, and they are designed to be used together:
 
@@ -822,9 +822,14 @@ Both run the same **Assess → Plan → Execute** model. That is the discipline 
 
 <div class="info" data-title="What is actually supported">
 
-> The deep, end-to-end story is **Java, .NET and C++**. Two narrower scenarios exist alongside it: **JavaScript/TypeScript** npm package upgrades (it reads `package.json`, plans the upgrade, and fixes the breaking changes), and **Python** migrations from Semantic Kernel or AutoGen to the Microsoft Agent Framework. Containerization and Azure deployment tasks are language-agnostic.
+> Split the matrix in two, because the docs do and people conflate them:
 >
-> Coverage also differs *per assessment domain*, which trips people up: upgrade and cloud-readiness scanning cover Java and .NET; CVE and CWE security scanning is Java-only today and is **off by default**; codebase insights cover Java, .NET and JavaScript/TypeScript. Check [Languages and frameworks supported](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/languages) before you promise anyone a portfolio scan — the matrix moves.
+> - **Upgrades** (runtime, framework, toolset) — **Java, .NET and C++**. For C++ this specifically means MSVC Build Tools upgrades for MSBuild (`.sln`, `.vcxproj`) and CMake projects.
+> - **Azure migration** scenarios — **Java and .NET only**. There is no "migrate my C++ app to Azure" story.
+>
+> Two narrower scenarios sit alongside: **JavaScript/TypeScript** npm package upgrades (it reads `package.json`, plans the upgrade, and fixes the breaking changes), and **Python** migrations from Semantic Kernel or AutoGen to the Microsoft Agent Framework. Containerization and deployment tasks are language-agnostic.
+>
+> Coverage differs again *per assessment domain*, which trips people up: upgrade and cloud-readiness scanning cover Java and .NET; CVE and CWE security scanning is Java-only today and is **off by default**; codebase insights cover Java, .NET and JavaScript/TypeScript. Check [Languages and frameworks supported](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/languages) before you promise anyone a portfolio scan — the matrix moves.
 
 </div>
 
@@ -842,7 +847,7 @@ Install the [GitHub Copilot modernization extension](https://marketplace.visuals
 
 <div class="info" data-title="Which IDE for which stack">
 
-> Java is the most complete story and works in **VS Code** and **IntelliJ IDEA**. .NET is covered in **Visual Studio** and VS Code; C++ lives in **Visual Studio**. The walkthrough below describes the Java-in-VS-Code flow because that is the one this workshop can send you at with a public sample — the shape is the same elsewhere, the buttons are not.
+> Java is the most complete story and works in **VS Code** and **IntelliJ IDEA**. .NET is covered in **Visual Studio** and VS Code. C++ is **Visual Studio only** and needs a recent one — VS 2026 18.7 or later — and it is upgrade-only, with its own state layout under `.github/upgrades/` rather than the `.github/modernize/` paths used elsewhere. The walkthrough below describes the Java-in-VS-Code flow because that is the one this workshop can send you at with a public sample — the shape is the same elsewhere, the buttons are not.
 
 </div>
 
@@ -1067,7 +1072,7 @@ docker compose up -d      # repeat your smoke test by hand
 | Supported stack, known target, one app, you want to watch it work | **IDE extension** |
 | One app, but you live in the terminal | **Modernize CLI** interactively — same loop, TUI instead of a sidebar |
 | Java, .NET or JavaScript/TypeScript across a portfolio, or you need it in a pipeline | **Modernize CLI** — batch assessment covers those three |
-| C++ | **IDE extension** (Visual Studio) — the CLI does not target it |
+| C++ toolset upgrade (MSBuild or CMake) | **IDE extension** in **Visual Studio 2026 18.7+** — the CLI does not target C++, and there is no Azure migration path for it |
 | You want more consistency across teams | **Modernize CLI** + custom skills, plus a way to distribute them |
 | Unsupported stack (COBOL, RPG, Delphi, home-grown 4GL) | **The hand-rolled loop from 5.6** |
 | Supported stack, but nobody knows what the business rules are anymore | **Both** — phase 1 by hand for the rules, then the product for the mechanical migration |
