@@ -808,6 +808,8 @@ It comes in two surfaces, and they are designed to be used together:
 | **IDE extension** — GitHub Copilot modernization for VS Code / IntelliJ / Visual Studio | Developers | One application, interactive, hands on the code |
 | **Modernize CLI** (`modernize`) — *the modernization agent* | Architects, app owners, platform teams | Many repositories, batch, CI/CD |
 
+The intended operating model is a handoff, not a choice: the CLI assesses the estate and produces plans, someone reviews and prioritizes them into waves, and then each repository is executed — in the IDE by the developer who owns it, or headlessly in a pipeline. Nothing stops you from living entirely in one surface, and 5.7.3 does exactly that.
+
 Both run the same **Assess → Plan → Execute** model. That is the discipline from 5.2–5.5 under different names:
 
 | This chapter | GitHub Copilot modernization | What is actually different |
@@ -816,7 +818,7 @@ Both run the same **Assess → Plan → Execute** model. That is the discipline 
 | 2. Substitution audit | Assessment findings plus a catalog of predefined migration solutions | Same intent — *what should not stay as it is* — but scoped to the scenarios the product already knows. |
 | 3a. Re-architecture | **Plan** — an editable `plan.md` you review before anything runs | Same artifact-first idea. Their plan aims at a supported destination rather than an open architecture. |
 | 3b. Re-write | **Execute** — code transformations followed by a validation pass | The strongest part of the product, because build and CVE scans are real tooling giving a hard signal rather than an LLM being asked nicely. How deep validation goes depends on the flow — see the note in 5.7.1. |
-| 4. Deploy | Containerization, IaC generation and deployment tasks | It generates the assets. Promotion gates, rollback, data migration and strangler-fig cutover are still yours to own. |
+| 4. Deploy | Containerization, IaC generation and deployment tasks — it can generate the assets *and* provision and deploy them | The generation is genuinely useful. Promotion gates, rollback, data migration and strangler-fig cutover are still yours to own — and "it can deploy" means you should know which subscription it is pointed at. |
 
 <div class="info" data-title="What is actually supported">
 
@@ -826,9 +828,11 @@ Both run the same **Assess → Plan → Execute** model. That is the discipline 
 
 </div>
 
-<div class="warning" data-title="It is a tool, not a replacement for phase 1">
+<div class="warning" data-title="Where this genuinely wins — and where it stops">
 
-> The product is excellent at *mechanical* modernization: "this is Spring Boot 2 on JDK 8 with a hard-coded SQL password, take it to Spring Boot 3 on JDK 21 with Managed Identity." Full analysis will even hand you a first draft of the architecture and the business workflows — but a first draft inferred from code is not the same as knowing why the 1987 rounding rule exists, and it cannot interview the last person who remembers. If your legacy system is a supported stack, let the product do the mechanical work and spend your human time validating phase 1. If it is a COBOL mainframe, the hand-rolled loop from 5.6 is still your path.
+> It is very good at *mechanical* modernization, and that is not faint praise — "Spring Boot 2 on JDK 8 with a hard-coded SQL password, take it to Spring Boot 3 on JDK 21 with Managed Identity" is weeks of tedious, error-prone work that it will do in an afternoon with a real build and CVE signal behind it. If your stack is supported and your target is known, use it and spend your human time validating rather than typing.
+>
+> Where it stops is judgement. It cannot tell you why the 1987 rounding rule exists, and it cannot interview the last person who remembers. If your legacy system is a COBOL mainframe, the hand-rolled loop from 5.6 is still your path.
 
 </div>
 
@@ -851,7 +855,7 @@ Install the [GitHub Copilot modernization extension](https://marketplace.visuals
 **The loop, end to end:**
 
 1. **Assess.** Point it at your project and pick the analysis domains (e.g. cloud readiness, Java upgrade). It runs [AppCAT](https://learn.microsoft.com/azure/migrate/appcat/java) and produces an assessment report that groups findings by issue, each with recommended solutions.
-2. **Pick a solution and run it.** Chat opens in agent mode and the agent writes a `plan.md` and a `progress.md`. **Read `plan.md` and edit it** — this is your spec, and it is the last cheap moment to change direction.
+2. **Pick a solution and run it.** Chat opens in agent mode and the agent writes a `plan.md` and a `progress.md`. **Read `plan.md` and edit it** — this is your migration plan and your review gate, and it is the last cheap moment to change direction.
 3. **Confirm.** You approve, and the agent checks version control status and creates a migration branch *before* touching code.
 4. **Transform.** The agent applies the code, config and dependency changes.
 5. **Validate.** In the Java migration flow a fixed sequence runs: CVE check → build → consistency analysis (did behavior change?) → tests → completeness analysis (did we miss occurrences?). Failures are fed back for repair. **Not every flow runs all five** — a plain framework upgrade or a CLI-driven execution may only build and scan. Check what actually ran instead of assuming.
@@ -955,7 +959,7 @@ modernize plan execute --plan-name oracle-to-pg --no-tty
 
 <div class="warning" data-title="Cloud delegation has prerequisites">
 
-> `--delegate cloud` only works for repositories with **github.com** URLs, and each one needs the cloud coding agent enabled. Local paths, GitLab and Azure DevOps sources have to run locally. Plan your batch accordingly — a mixed portfolio means two passes.
+> `--delegate cloud` only works for repositories with **github.com** URLs, and each one needs the cloud coding agent enabled, the modernization MCP server configured, and enough access for the agent to push a branch or fork. Local paths, GitLab and Azure DevOps sources have to run locally. Plan your batch accordingly — a mixed portfolio means two passes, and a repository you have not prepared will simply fail rather than fall back.
 
 </div>
 
@@ -1002,26 +1006,57 @@ A complete worked example ships in [`Azure-Samples/NewsFeedSite`](https://github
 
 ### 5.7.3 Hands-on: run the modernization agent end to end
 
+The sample is a Spring Boot 2.7.18 app on **Java 8** backed by Oracle in Docker — a realistic upgrade target. You need Docker Desktop with ~4 GB free for the Oracle container, a JDK, and Maven.
+
+**Step 1 — establish a baseline.** You cannot answer "did behavior change?" without knowing what the behavior *was*. This is the same discipline as phase 3b in 5.4; the product does not excuse you from it.
+
 ```bash
 git clone https://github.com/Azure-Samples/PhotoAlbum-Java.git   # or .../PhotoAlbum.git for .NET
 cd PhotoAlbum-Java
 git checkout -b modernize
+
+mvn clean verify          # record what passes
+docker compose up -d      # start it, upload a photo, view it, delete it
+```
+
+Write down what you just did by hand. That is your smoke test, and you will repeat it at the end.
+
+<div class="warning" data-title="The sample has one test, and it only checks the context loads">
+
+> Look at `src/test/java/.../PhotoAlbumApplicationTests.java` — it is a single `contextLoads()`. A green build here tells you almost nothing about behavior. That is *exactly* the situation most legacy code is in, and it is why the completeness and consistency stages exist. Treat the green checkmark as the beginning of your review, not the end of it.
+
+</div>
+
+**Step 2 — assess, plan, execute.**
+
+```bash
 gh auth login
 modernize
 ```
 
-Then walk the menu: **assess** the current folder with the recommended defaults, running locally → **create a modernization plan** from the assessment → give it a goal such as `upgrade to spring boot 3` or `deploy to azure container apps` → answer the clarifying questions → **read and edit `plan.md`** → **execute**.
+Walk the flow: **assess** the current folder running locally → **create a plan** from the assessment → give it a goal → answer the clarifying questions → **read and edit `plan.md`** → **execute**.
 
-Review what it did before you trust it:
+For the goal, use something contained like `upgrade to spring boot 3 and java 21`. That is what this sample is built to demonstrate, and it changes nothing outside your working copy.
+
+<div class="warning" data-title="Careful with deployment goals">
+
+> A goal like "deploy to Azure Container Apps" will do exactly that: provision real, billable resources in whatever subscription you are logged into. Fine when you mean it, expensive when you were just following a workshop. If you want to see the deployment story without the bill, ask it to *generate* the container and IaC assets and stop there — then read them.
+
+</div>
+
+**Step 3 — review before you trust it.**
 
 ```bash
 git status
 git diff main
+
+mvn clean verify          # compare against your baseline
+docker compose up -d      # repeat your smoke test by hand
 ```
 
 <div class="info" data-title="What to pay attention to">
 
-> Do not just check that it built. Ask the two questions this chapter has been asking all along: *did any behavior change that the plan did not mention?* and *did it invent anything the assessment did not find?* Consistency and completeness analysis exist precisely because those are the failure modes — but they are not guaranteed to have run on this path, so confirm what it actually validated, run your own tests, and be the last reviewer.
+> Do not just check that it built. Ask the two questions this chapter has been asking all along: *did any behavior change that the plan did not mention?* and *did it invent anything the assessment did not find?* Consistency and completeness analysis exist precisely because those are the failure modes — but they are not guaranteed to have run on this path, so confirm what it actually validated. With one context-load test in the repo, you are the regression suite.
 
 </div>
 
@@ -1030,6 +1065,7 @@ git diff main
 | Situation | Reach for |
 | --- | --- |
 | Supported stack, known target, one app, you want to watch it work | **IDE extension** |
+| One app, but you live in the terminal | **Modernize CLI** interactively — same loop, TUI instead of a sidebar |
 | Java, .NET or JavaScript/TypeScript across a portfolio, or you need it in a pipeline | **Modernize CLI** — batch assessment covers those three |
 | C++ | **IDE extension** (Visual Studio) — the CLI does not target it |
 | You want more consistency across teams | **Modernize CLI** + custom skills, plus a way to distribute them |
