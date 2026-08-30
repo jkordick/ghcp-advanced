@@ -812,21 +812,23 @@ Both run the same **Assess → Plan → Execute** model. That is the discipline 
 
 | This chapter | GitHub Copilot modernization | What is actually different |
 | --- | --- | --- |
-| 1. Rediscovery | **Assess** — [AppCAT](https://learn.microsoft.com/azure/migrate/appcat/java)-driven scan of code, config and dependencies producing a cloud-readiness report | Their assess is *rules-driven*: it finds known anti-patterns, EOL versions and cloud blockers. It does **not** reverse-engineer your business rules. |
+| 1. Rediscovery | **Assess** — two tracks: *issue scanning* (EOL runtimes, cloud blockers, CVEs) and, when you switch analysis coverage to full, *codebase insights* (architecture, API contracts, configuration, business workflows, dependencies, data model) | Closer than you would expect — full analysis really does reconstruct business workflows from code. But it is **inference, not validated fact**, and issue-scanning is the default. Phase 1 is where you check it against reality and against the people who still run the thing. |
 | 2. Substitution audit | Assessment findings plus a catalog of predefined migration solutions | Same intent — *what should not stay as it is* — but scoped to the scenarios the product already knows. |
 | 3a. Re-architecture | **Plan** — an editable `plan.md` you review before anything runs | Same artifact-first idea. Their plan aims at a supported destination rather than an open architecture. |
-| 3b. Re-write | **Execute** — code transformations followed by a validation pass (build, CVE scan, tests, plus AI checks for behavior consistency and missed occurrences) | The strongest part of the product: build, tests and CVE scans are real tooling giving you a hard signal, not an LLM being asked nicely. |
-| 4. Deploy | Containerization, IaC generation and deployment tasks | Same. |
+| 3b. Re-write | **Execute** — code transformations followed by a validation pass | The strongest part of the product, because build and CVE scans are real tooling giving a hard signal rather than an LLM being asked nicely. How deep validation goes depends on the flow — see the note in 5.7.1. |
+| 4. Deploy | Containerization, IaC generation and deployment tasks | It generates the assets. Promotion gates, rollback, data migration and strangler-fig cutover are still yours to own. |
 
 <div class="info" data-title="What is actually supported">
 
-> The deep, end-to-end story is **Java, .NET and C++**. Two narrower scenarios exist alongside it: **JavaScript/TypeScript** npm package upgrades (it reads `package.json`, plans the upgrade, and fixes the breaking changes), and **Python** migrations from Semantic Kernel or AutoGen to the Microsoft Agent Framework. Containerization and Azure deployment tasks are language-agnostic. See [Languages and frameworks supported](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/languages) for the current list — it moves.
+> The deep, end-to-end story is **Java, .NET and C++**. Two narrower scenarios exist alongside it: **JavaScript/TypeScript** npm package upgrades (it reads `package.json`, plans the upgrade, and fixes the breaking changes), and **Python** migrations from Semantic Kernel or AutoGen to the Microsoft Agent Framework. Containerization and Azure deployment tasks are language-agnostic.
+>
+> Coverage also differs *per assessment domain*, which trips people up: upgrade and cloud-readiness scanning cover Java and .NET; CVE and CWE security scanning is Java-only today and is **off by default**; codebase insights cover Java, .NET and JavaScript/TypeScript. Check [Languages and frameworks supported](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/languages) before you promise anyone a portfolio scan — the matrix moves.
 
 </div>
 
 <div class="warning" data-title="It is a tool, not a replacement for phase 1">
 
-> The product is excellent at *mechanical* modernization: "this is Spring Boot 2 on JDK 8 with a hard-coded SQL password, take it to Spring Boot 3 on JDK 21 with Managed Identity." It is not doing archaeology on the business rules nobody documented. If your legacy system is a supported stack, let it do the mechanical work and spend your human time on phase 1. If it is a COBOL mainframe, the hand-rolled loop from 5.6 is still your path.
+> The product is excellent at *mechanical* modernization: "this is Spring Boot 2 on JDK 8 with a hard-coded SQL password, take it to Spring Boot 3 on JDK 21 with Managed Identity." Full analysis will even hand you a first draft of the architecture and the business workflows — but a first draft inferred from code is not the same as knowing why the 1987 rounding rule exists, and it cannot interview the last person who remembers. If your legacy system is a supported stack, let the product do the mechanical work and spend your human time validating phase 1. If it is a COBOL mainframe, the hand-rolled loop from 5.6 is still your path.
 
 </div>
 
@@ -852,13 +854,13 @@ Install the [GitHub Copilot modernization extension](https://marketplace.visuals
 2. **Pick a solution and run it.** Chat opens in agent mode and the agent writes a `plan.md` and a `progress.md`. **Read `plan.md` and edit it** — this is your spec, and it is the last cheap moment to change direction.
 3. **Confirm.** You approve, and the agent checks version control status and creates a migration branch *before* touching code.
 4. **Transform.** The agent applies the code, config and dependency changes.
-5. **Validate.** A fixed sequence runs: CVE check → build → consistency analysis (did behavior change?) → tests → completeness analysis (did we miss occurrences?). Failures are fed back for repair.
+5. **Validate.** In the Java migration flow a fixed sequence runs: CVE check → build → consistency analysis (did behavior change?) → tests → completeness analysis (did we miss occurrences?). Failures are fed back for repair. **Not every flow runs all five** — a plain framework upgrade or a CLI-driven execution may only build and scan. Check what actually ran instead of assuming.
 6. **Review.** A migration summary is produced. You read the diff and accept or discard it.
 
 **Two extension points, both familiar:**
 
 - **Predefined tasks** — the built-in migration recipes (SQL auth → Managed Identity, message broker → Azure Service Bus, local file I/O → Blob Storage, and so on).
-- **Custom skills** — your own recipes in `.github/skills/<name>/SKILL.md`. Same [Agent Skills](https://agentskills.io/specification) format you met in [1.6](#16-agent-skills). This is how you encode *your* internal SDK, *your* logging standard, *your* migration pattern once and have every team apply it identically.
+- **Custom skills** — your own recipes in `.github/skills/<name>/SKILL.md`. Same [Agent Skills](https://agentskills.io/specification) format you met in [1.6](#16-agent-skills). This is how you encode *your* internal SDK, *your* logging standard, *your* migration pattern once instead of re-explaining it in every repository.
 
 <div class="info" data-title="Review checkpoints are built in — use them">
 
@@ -866,7 +868,7 @@ Install the [GitHub Copilot modernization extension](https://marketplace.visuals
 
 </div>
 
-**Try it:** clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), check out the `source` branch, open the `mi-sql-public-demo` folder, run a cloud-readiness assessment and apply the SQL database migration solution it recommends — it swaps a username/password connection for Managed Identity. Requires JDK 21+ and Maven or Gradle.
+**Try it (optional — pick this one if you work in an IDE all day):** clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), check out the `source` branch, open the `mi-sql-public-demo` folder, run a cloud-readiness assessment and apply the SQL database migration solution it recommends — it swaps a username/password connection for Managed Identity. Requires JDK 21+ and Maven or Gradle.
 
 ### 5.7.2 The Modernize CLI — the modernization agent
 
@@ -907,19 +909,9 @@ gh auth login
 
 #### Interactive mode
 
-Running `modernize` with no arguments drops you into a TUI whose main menu is, unsurprisingly, the four things you already know:
+Running `modernize` with no arguments drops you into a TUI. The main menu is, unsurprisingly, the four things you already know: **assess** a codebase, **plan** a modernization from those findings, **execute** a plan, or run a combined **upgrade** flow that plans and executes a runtime/framework bump in one go. Everything after that is a series of prompts — pick your sources, pick your assessment domains, choose local or cloud execution.
 
-```text
-○ What would you like to do?
-
-  > 1. Assess     Analyze your source application and generate an assessment report
-    2. Plan       Create a modernization plan based on assessment findings
-    3. Execute    Run tasks defined in your modernization plan
-    ─────────────────────────────────────────────────────────────
-    4. Upgrade    Upgrade your runtime and frameworks to the latest versions
-```
-
-The wording moves between releases — the four capabilities do not. Artifacts land in your repository, which is the whole point: they are git-diffable and survive the session.
+Artifacts land in your repository, which is the whole point: they are git-diffable and survive the session.
 
 | Artifact | Location |
 | --- | --- |
@@ -938,7 +930,9 @@ The wording moves between releases — the four capabilities do not. Artifacts l
 | `modernize help models` | List available models and their multipliers |
 | `modernize update` | Update the CLI |
 
-Useful flags: `--source` (a local path, a Git URL **or** a JSON config file, repeatable for multi-repo), `--delegate local|cloud`, `--language java|dotnet|python`, `--assess-file-path` (feed an assessment report into `plan create`), `--format html|markdown`, `--model`, `--plan-name`, `--issue-url`, `--no-tty`.
+Flags worth knowing — they are spread across the commands rather than one shared set, so check `--help` on the one you are running: `--source` (a local path, a Git URL **or** a JSON config file, repeatable for multi-repo), `--delegate local|cloud`, `--language java|dotnet|python`, `--assess-file-path` (feed an assessment report into `plan create`), `--format html|markdown`, `--model`, `--plan-name`, `--issue-url`, `--no-tty`.
+
+For portfolio runs, list your repositories in a JSON config file — `.github/modernize/repos.json` is picked up automatically — where each entry carries a `name` plus a `url` or local `path`, and optionally a branch. You can also group repositories into logical applications so the aggregated report is organized per app.
 
 ```bash
 # Assess three repos at once and publish the summary to an issue
@@ -959,9 +953,15 @@ modernize upgrade "Java 21" --delegate cloud
 modernize plan execute --plan-name oracle-to-pg --no-tty
 ```
 
-<div class="tip" data-title="plan.md is the spec — treat it like one">
+<div class="warning" data-title="Cloud delegation has prerequisites">
 
-> `modernize plan create` and `modernize plan execute` are two commands on purpose. Everything this workshop teaches about SDD applies: read the plan, edit the plan, commit the plan, *then* execute. Running `modernize upgrade` collapses both steps into one — convenient for a routine JDK bump, wrong for anything you would want to review.
+> `--delegate cloud` only works for repositories with **github.com** URLs, and each one needs the cloud coding agent enabled. Local paths, GitLab and Azure DevOps sources have to run locally. Plan your batch accordingly — a mixed portfolio means two passes.
+
+</div>
+
+<div class="tip" data-title="plan.md is your review gate — use it">
+
+> `modernize plan create` and `modernize plan execute` are two commands on purpose. Everything this workshop teaches about SDD applies: read the plan, edit the plan, commit the plan, *then* execute. Note the division of labour — `plan.md` is the human-readable intent, `tasks.json` is what the agent actually walks, so skim both before you execute. And keep it distinct from your phase-1 spec: this plan describes *a migration*, not *what the system does*. Running `modernize upgrade` collapses plan and execute into one step — convenient for a routine JDK bump, wrong for anything you would want to review.
 
 </div>
 
@@ -988,7 +988,9 @@ description: Migrate from RabbitMQ with AMQP to Azure Service Bus for messaging
 <what the agent must check after applying the migration>
 ```
 
-When you run `plan create`, the agent scans `.github/skills/`, matches your prompt against each skill's `description`, and folds the matching ones into the plan. So the `description` field is doing all the routing work — `"Migrate from RabbitMQ with AMQP to Azure Service Bus for messaging"` gets matched; `"Messaging migration"` does not.
+When you run `plan create`, the agent scans `.github/skills/`, matches your prompt against each skill's `description`, and folds the matching ones into the plan. The `description` field is doing all the routing work, and the matching is a model judgement rather than a lookup — so write it the way you would write a search query you want to hit. `"Migrate from RabbitMQ with AMQP to Azure Service Bus for messaging"` gives the model something to match on; `"Messaging migration"` is a coin flip.
+
+Two caveats before you build a governance story on this. Skills live **in a repository**, so "every team uses our standard" needs a real distribution mechanism — a template repo, a sync workflow, a shared submodule — plus versioning for when the standard changes. And because matching is probabilistic, treat skills as a way to make outcomes *more consistent*, not as a control that guarantees they are identical.
 
 <div class="warning" data-title="Skill not being picked up?">
 
@@ -1019,7 +1021,7 @@ git diff main
 
 <div class="info" data-title="What to pay attention to">
 
-> Do not just check that it built. Ask the two questions this chapter has been asking all along: *did any behavior change that the plan did not mention?* and *did it invent anything the assessment did not find?* The consistency and completeness validation stages exist precisely because those are the failure modes — but you are still the last reviewer.
+> Do not just check that it built. Ask the two questions this chapter has been asking all along: *did any behavior change that the plan did not mention?* and *did it invent anything the assessment did not find?* Consistency and completeness analysis exist precisely because those are the failure modes — but they are not guaranteed to have run on this path, so confirm what it actually validated, run your own tests, and be the last reviewer.
 
 </div>
 
@@ -1028,15 +1030,15 @@ git diff main
 | Situation | Reach for |
 | --- | --- |
 | Supported stack, known target, one app, you want to watch it work | **IDE extension** |
-| Java, .NET or Python across a portfolio, or you need it in a pipeline | **Modernize CLI** |
+| Java, .NET or JavaScript/TypeScript across a portfolio, or you need it in a pipeline | **Modernize CLI** — batch assessment covers those three |
 | C++ | **IDE extension** (Visual Studio) — the CLI does not target it |
-| You need organization-wide consistency across teams | **Modernize CLI** + custom skills in `.github/skills/` |
+| You want more consistency across teams | **Modernize CLI** + custom skills, plus a way to distribute them |
 | Unsupported stack (COBOL, RPG, Delphi, home-grown 4GL) | **The hand-rolled loop from 5.6** |
 | Supported stack, but nobody knows what the business rules are anymore | **Both** — phase 1 by hand for the rules, then the product for the mechanical migration |
 
 <div class="tip" data-title="Do this now">
 
-> Take one repository you actually own, run `modernize assess` on it, and read the report. Even if you never execute a single plan, an evidence-based inventory of your EOL runtimes, CVEs and cloud blockers is worth the ten minutes — and it is exactly the kind of artifact that makes the phase-2 substitution audit go fast.
+> Take one repository you actually own and run an assessment on it. Turn on **full analysis** so you get the codebase insights, not just the issue list — and if it is a Java project, tick the security domain too, because CVE scanning is off by default. Even if you never execute a single plan, an evidence-based inventory of your EOL runtimes, cloud blockers and inferred business workflows is worth the wait — and it is exactly the kind of artifact that makes the phase-2 substitution audit go fast.
 
 </div>
 
