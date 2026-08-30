@@ -26,7 +26,7 @@ Welcome! This workshop has the following parts:
 2. **Spec-Driven Development (SDD)**: You will learn how to make specifications, drive what GitHub Copilot builds for you, and you will do it end-to-end on a small TypeScript/Node feature.
 3. **Introduction of [spec-kit](https://github.com/github/spec-kit)** as a tool to use spec driven development conveniently with most agentic coding tools.
 4. (soon) **How to use [squad](https://github.com/bradygaster/squad)** open-source framework for orchestrating multi-agent development teams.
-5. **App modernization**: a dedicated chapter on how to use GitHub Copilot to modernize legacy apps, with two hands-on tracks (spec-kit-driven and GitHub Copilot-native custom agents + prompts).
+5. **App modernization**: a dedicated chapter on how to use GitHub Copilot to modernize legacy apps, with two hands-on tracks (spec-kit-driven and GitHub Copilot-native custom agents + prompts), plus the off-the-shelf GitHub Copilot modernization agents (VS Code extension and the Modernize CLI).
 6. **Context Engineering**: Theory foundations (LLMs, agents, context rot) followed by hands-on exercises adding instructions, scoped rules, and skills to a pre-built project.
 7. (soon) **Agentic Workflows**
 8. **The GitHub Copilot SDK**: Embed Copilot directly into your own apps — open sessions, stream responses, and let Copilot call custom tools you define in TypeScript/Node.
@@ -664,6 +664,8 @@ You have two ways to run this hands-on. Both cover the same four phases; they di
 - **Track A — spec-kit driven (recommended).** You drive the loop yourself with the `/speckit.*` commands from [Chapter 3](#chapter-3-spec-kit-by-github), one full loop per phase. No bespoke assets required. This is the natural continuation of the spec-kit chapter and is stack-agnostic.
 - **Track B — GitHub Copilot-native custom agents + prompts (alternative).** You run a pre-built kit of custom agents and prompt files that productize the exact same four phases into turnkey, one-artifact-per-run commands. This track doubles as a capstone for the custom agents (1.5) and prompt files (1.4) you met earlier.
 
+If your legacy system happens to be Java, .NET or C++, there is also a vendor-built route: [5.7](#57-off-the-shelf--the-github-copilot-modernization-agents) covers the GitHub Copilot modernization agents. Do the hands-on first — knowing what the loop *should* look like is what lets you judge whether the product's output is any good.
+
 <div class="info" data-title="Why we leave the duck behind here">
 
 > Both tracks deliberately step away from the greenfield `duck-emporium` you use elsewhere in this workshop. Modernization needs *real legacy code* — a purpose-built TypeScript/Node sample would defeat the point — so each track works against an external legacy repository instead. Everything you learn transfers straight back to whatever legacy system you actually own.
@@ -792,6 +794,249 @@ Phase 4 stops at emitting reviewable artifacts. Actually running `az deployment`
 <div class="info" data-title="What you take home">
 
 > After a full pass you have: a curated `AGENTS.md`, four rediscovery documents that a domain reviewer signed off on, a substitution audit with explicit trade-offs, an architecture document where every decision is traceable, one or more modules re-implemented with a parity report against the legacy behavior, and a deployable pipeline + IaC. Every one of those artifacts survives without the agent — that is the durable value of doing modernization this way. And this pattern repeats with every kind of legacy system.
+
+</div>
+
+## 5.7 Off-the-shelf — the GitHub Copilot modernization agents
+
+Everything up to here you assembled yourself out of Copilot primitives: prompt files, custom agents, spec-kit loops. Microsoft ships a **productized** version of the same idea — [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview) — for the stacks where the modernization *target* is already well known: Java, .NET and C++ upgrades, plus migrations to Azure.
+
+It comes in two surfaces, and they are designed to be used together:
+
+| Surface | Who it is for | Scale |
+| --- | --- | --- |
+| **IDE extension** — GitHub Copilot modernization for VS Code / IntelliJ / Visual Studio | Developers | One application, interactive, hands on the code |
+| **Modernize CLI** (`modernize`) — *the modernization agent* | Architects, app owners, platform teams | Many repositories, batch, CI/CD |
+
+Both run the same **Assess → Plan → Execute** model. That is the discipline from 5.2–5.5 under different names:
+
+| This chapter | GitHub Copilot modernization | What is actually different |
+| --- | --- | --- |
+| 1. Rediscovery | **Assess** — [AppCAT](https://learn.microsoft.com/azure/migrate/appcat/java)-driven scan of code, config and dependencies producing a cloud-readiness report | Their assess is *rules-driven*: it finds known anti-patterns, EOL versions and cloud blockers. It does **not** reverse-engineer your business rules. |
+| 2. Substitution audit | Assessment findings plus a catalog of predefined migration solutions | Same intent — *what should not stay as it is* — but scoped to the scenarios the product already knows. |
+| 3a. Re-architecture | **Plan** — an editable `plan.md` you review before anything runs | Same artifact-first idea. Their plan aims at a supported destination rather than an open architecture. |
+| 3b. Re-write | **Execute** — code transformations followed by a validation pass (build, CVE scan, tests, plus AI checks for behavior consistency and missed occurrences) | The strongest part of the product: build, tests and CVE scans are real tooling giving you a hard signal, not an LLM being asked nicely. |
+| 4. Deploy | Containerization, IaC generation and deployment tasks | Same. |
+
+<div class="info" data-title="What is actually supported">
+
+> The deep, end-to-end story is **Java, .NET and C++**. Two narrower scenarios exist alongside it: **JavaScript/TypeScript** npm package upgrades (it reads `package.json`, plans the upgrade, and fixes the breaking changes), and **Python** migrations from Semantic Kernel or AutoGen to the Microsoft Agent Framework. Containerization and Azure deployment tasks are language-agnostic. See [Languages and frameworks supported](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/languages) for the current list — it moves.
+
+</div>
+
+<div class="warning" data-title="It is a tool, not a replacement for phase 1">
+
+> The product is excellent at *mechanical* modernization: "this is Spring Boot 2 on JDK 8 with a hard-coded SQL password, take it to Spring Boot 3 on JDK 21 with Managed Identity." It is not doing archaeology on the business rules nobody documented. If your legacy system is a supported stack, let it do the mechanical work and spend your human time on phase 1. If it is a COBOL mainframe, the hand-rolled loop from 5.6 is still your path.
+
+</div>
+
+### 5.7.1 The IDE experience — VS Code extension
+
+Install the [GitHub Copilot modernization extension](https://marketplace.visualstudio.com/items?itemName=vscjava.migrate-java-to-azure) and restart VS Code. You get a dedicated sidebar pane with two things that matter: a quickstart area (start an assessment, upgrade runtimes and frameworks) and a task catalog (upgrades, migrations, containerization, deployment, quality and security).
+
+<div class="info" data-title="Which IDE for which stack">
+
+> Java is the most complete story and works in **VS Code** and **IntelliJ IDEA**. .NET is covered in **Visual Studio** and VS Code; C++ lives in **Visual Studio**. The walkthrough below describes the Java-in-VS-Code flow because that is the one this workshop can send you at with a public sample — the shape is the same elsewhere, the buttons are not.
+
+</div>
+
+<div class="tip" data-title="Look what it is made of">
+
+> After installing the extension, open the tool picker and the agent picker in Copilot Chat. You will find a set of extension-contributed `appmod-*` tools and a family of `modernize` custom agents, and the customization story is [Agent Skills](https://agentskills.io/specification) in `.github/skills/`. In other words: the product is assembled from **the same building blocks you met in Chapter 1** — tools, custom agents and skills. It is a very good worked example of how far those primitives scale.
+
+</div>
+
+**The loop, end to end:**
+
+1. **Assess.** Point it at your project and pick the analysis domains (e.g. cloud readiness, Java upgrade). It runs [AppCAT](https://learn.microsoft.com/azure/migrate/appcat/java) and produces an assessment report that groups findings by issue, each with recommended solutions.
+2. **Pick a solution and run it.** Chat opens in agent mode and the agent writes a `plan.md` and a `progress.md`. **Read `plan.md` and edit it** — this is your spec, and it is the last cheap moment to change direction.
+3. **Confirm.** You approve, and the agent checks version control status and creates a migration branch *before* touching code.
+4. **Transform.** The agent applies the code, config and dependency changes.
+5. **Validate.** A fixed sequence runs: CVE check → build → consistency analysis (did behavior change?) → tests → completeness analysis (did we miss occurrences?). Failures are fed back for repair.
+6. **Review.** A migration summary is produced. You read the diff and accept or discard it.
+
+**Two extension points, both familiar:**
+
+- **Predefined tasks** — the built-in migration recipes (SQL auth → Managed Identity, message broker → Azure Service Bus, local file I/O → Blob Storage, and so on).
+- **Custom skills** — your own recipes in `.github/skills/<name>/SKILL.md`. Same [Agent Skills](https://agentskills.io/specification) format you met in [1.6](#16-agent-skills). This is how you encode *your* internal SDK, *your* logging standard, *your* migration pattern once and have every team apply it identically.
+
+<div class="info" data-title="Review checkpoints are built in — use them">
+
+> The guided flow gives you three natural places to intervene: the plan before execution, each tool invocation during it, and the diff at the end. How much of that you are actually prompted for depends on your approval settings and whether you are running interactively — so do not assume a checkpoint fired just because it exists. Read `plan.md`, and read the diff.
+
+</div>
+
+**Try it:** clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), check out the `source` branch, open the `mi-sql-public-demo` folder, run a cloud-readiness assessment and apply the SQL database migration solution it recommends — it swaps a username/password connection for Managed Identity. Requires JDK 21+ and Maven or Gradle.
+
+### 5.7.2 The Modernize CLI — the modernization agent
+
+The [modernization agent](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/modernization-agent/overview) is the same capability at **portfolio scale**. The premise: an architect defines modernization standards *once* as reusable skills, and every team and repository gets the same governed path. It ships from [`microsoft/modernize-cli`](https://github.com/microsoft/modernize-cli) and is currently in public preview.
+
+Where the IDE extension is one developer with one app, the CLI adds:
+
+- **Multi-repo assessment** — one command over many repositories, with aggregated cross-repo reports and cloud-readiness scores.
+- **Headless execution** — `--no-tty` for CI/CD pipelines and batch runs.
+- **Cloud delegation** — `--delegate cloud` hands work to the GitHub Copilot cloud coding agent so repositories are processed in parallel.
+- **Publishing to GitHub** — assessment summaries can be pushed straight into an issue.
+
+#### Install
+
+Prerequisites: `git`, [GitHub CLI](https://cli.github.com/) v2.45+, and a GitHub Copilot subscription (any plan).
+
+```bash
+# macOS / Linux — Homebrew
+brew tap microsoft/modernize https://github.com/microsoft/modernize-cli
+brew trust microsoft/modernize
+brew install modernize
+
+# macOS / Linux — shell script
+curl -fsSL https://raw.githubusercontent.com/microsoft/modernize-cli/main/scripts/install.sh | sh
+```
+
+```powershell
+# Windows — winget (recommended)
+winget install GitHub.Copilot.modernization.agent
+```
+
+Open a new terminal, then verify and authenticate:
+
+```bash
+modernize --version
+gh auth login
+```
+
+#### Interactive mode
+
+Running `modernize` with no arguments drops you into a TUI whose main menu is, unsurprisingly, the four things you already know:
+
+```text
+○ What would you like to do?
+
+  > 1. Assess     Analyze your source application and generate an assessment report
+    2. Plan       Create a modernization plan based on assessment findings
+    3. Execute    Run tasks defined in your modernization plan
+    ─────────────────────────────────────────────────────────────
+    4. Upgrade    Upgrade your runtime and frameworks to the latest versions
+```
+
+The wording moves between releases — the four capabilities do not. Artifacts land in your repository, which is the whole point: they are git-diffable and survive the session.
+
+| Artifact | Location |
+| --- | --- |
+| Assessment report | `.github/modernize/assessment/` |
+| Modernization plan | `.github/modernize/<plan-name>/plan.md` |
+| Task list (incl. which skills matched) | `.github/modernize/<plan-name>/tasks.json` |
+
+#### The commands you actually need
+
+| Command | What it does |
+| --- | --- |
+| `modernize assess` | Scan one or more sources, produce an assessment report |
+| `modernize plan create "<prompt>"` | Turn a natural-language goal into a reviewable `plan.md` |
+| `modernize plan execute` | Run the tasks in a plan |
+| `modernize upgrade "<target>"` | Plan **and** execute a runtime/framework upgrade in one shot |
+| `modernize help models` | List available models and their multipliers |
+| `modernize update` | Update the CLI |
+
+Useful flags: `--source` (a local path, a Git URL **or** a JSON config file, repeatable for multi-repo), `--delegate local|cloud`, `--language java|dotnet|python`, `--assess-file-path` (feed an assessment report into `plan create`), `--format html|markdown`, `--model`, `--plan-name`, `--issue-url`, `--no-tty`.
+
+```bash
+# Assess three repos at once and publish the summary to an issue
+modernize assess \
+  --source ./billing-service \
+  --source ./customer-api \
+  --source https://github.com/org/legacy-batch.git \
+  --issue-url https://github.com/org/repo/issues/123
+
+# Plan a specific migration, then review plan.md before executing
+modernize plan create "migrate from oracle to azure postgresql" --plan-name oracle-to-pg
+modernize plan execute --plan-name oracle-to-pg
+
+# One-shot upgrade, delegated to cloud agents
+modernize upgrade "Java 21" --delegate cloud
+
+# Headless, for a pipeline
+modernize plan execute --plan-name oracle-to-pg --no-tty
+```
+
+<div class="tip" data-title="plan.md is the spec — treat it like one">
+
+> `modernize plan create` and `modernize plan execute` are two commands on purpose. Everything this workshop teaches about SDD applies: read the plan, edit the plan, commit the plan, *then* execute. Running `modernize upgrade` collapses both steps into one — convenient for a routine JDK bump, wrong for anything you would want to review.
+
+</div>
+
+#### Custom skills — your standards, applied everywhere
+
+This is the reason the CLI exists. Drop a skill in `.github/skills/<name>/SKILL.md`:
+
+```markdown
+---
+name: rabbitmq-to-azure-service-bus
+description: Migrate from RabbitMQ with AMQP to Azure Service Bus for messaging
+---
+
+## Overview
+<the migration scenario in plain English>
+
+## Steps
+<ordered instructions for the agent>
+
+## Sample code
+<before/after snippets, config changes, dependency changes>
+
+## Verification
+<what the agent must check after applying the migration>
+```
+
+When you run `plan create`, the agent scans `.github/skills/`, matches your prompt against each skill's `description`, and folds the matching ones into the plan. So the `description` field is doing all the routing work — `"Migrate from RabbitMQ with AMQP to Azure Service Bus for messaging"` gets matched; `"Messaging migration"` does not.
+
+<div class="warning" data-title="Skill not being picked up?">
+
+> Check the obvious three first: no spaces in `name` (use hyphens), a `description` that shares vocabulary with your prompt, and the file living at `.github/skills/<skill-name>/SKILL.md`. Then confirm what actually matched by reading the `skills` array in `.github/modernize/<plan-name>/tasks.json`.
+
+</div>
+
+A complete worked example ships in [`Azure-Samples/NewsFeedSite`](https://github.com/Azure-Samples/NewsFeedSite).
+
+### 5.7.3 Hands-on: run the modernization agent end to end
+
+```bash
+git clone https://github.com/Azure-Samples/PhotoAlbum-Java.git   # or .../PhotoAlbum.git for .NET
+cd PhotoAlbum-Java
+git checkout -b modernize
+gh auth login
+modernize
+```
+
+Then walk the menu: **assess** the current folder with the recommended defaults, running locally → **create a modernization plan** from the assessment → give it a goal such as `upgrade to spring boot 3` or `deploy to azure container apps` → answer the clarifying questions → **read and edit `plan.md`** → **execute**.
+
+Review what it did before you trust it:
+
+```bash
+git status
+git diff main
+```
+
+<div class="info" data-title="What to pay attention to">
+
+> Do not just check that it built. Ask the two questions this chapter has been asking all along: *did any behavior change that the plan did not mention?* and *did it invent anything the assessment did not find?* The consistency and completeness validation stages exist precisely because those are the failure modes — but you are still the last reviewer.
+
+</div>
+
+### 5.7.4 Which one do I use?
+
+| Situation | Reach for |
+| --- | --- |
+| Supported stack, known target, one app, you want to watch it work | **IDE extension** |
+| Java, .NET or Python across a portfolio, or you need it in a pipeline | **Modernize CLI** |
+| C++ | **IDE extension** (Visual Studio) — the CLI does not target it |
+| You need organization-wide consistency across teams | **Modernize CLI** + custom skills in `.github/skills/` |
+| Unsupported stack (COBOL, RPG, Delphi, home-grown 4GL) | **The hand-rolled loop from 5.6** |
+| Supported stack, but nobody knows what the business rules are anymore | **Both** — phase 1 by hand for the rules, then the product for the mechanical migration |
+
+<div class="tip" data-title="Do this now">
+
+> Take one repository you actually own, run `modernize assess` on it, and read the report. Even if you never execute a single plan, an evidence-based inventory of your EOL runtimes, CVEs and cloud blockers is worth the ten minutes — and it is exactly the kind of artifact that makes the phase-2 substitution audit go fast.
 
 </div>
 
@@ -1571,6 +1816,7 @@ You (hopefully :D) have learned:
 - [Awesome Copilot](https://github.com/github/awesome-copilot) — community prompts, chatmodes, instructions
 - [spec-kit](https://github.com/github/spec-kit)
 - [Model Context Protocol](https://modelcontextprotocol.io)
+- [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview) and the [modernization agent / Modernize CLI](https://github.com/microsoft/modernize-cli)
 - The original [GH Copilot HoL](https://moaw.dev/workshop/gh:Philess/GHCopilotHoL/main/docs/) — broader foundational GitHub Copilot product tour this workshop builds on
 - [squad](https://github.com/bradygaster/squad) - human-directed AI development team through GitHub Copilot
 
