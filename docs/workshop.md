@@ -799,21 +799,20 @@ Phase 4 stops at emitting reviewable artifacts. Actually running `az deployment`
 
 ## 5.7 Off-the-shelf — the GitHub Copilot modernization agents
 
-Everything up to here you assembled yourself out of Copilot primitives: prompt files, custom agents, spec-kit loops. Microsoft ships a **productized** version of a similar idea: [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview). Developed for the stacks where the modernization *target* is already well known: runtime and framework upgrades for Java, .NET and C++.
+Everything up to here you assembled yourself out of Copilot primitives: prompt files, custom agents, spec-kit loops. Microsoft ships a **productized** version of a similar idea: [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview). Developed for the stacks where the modernization target is already well known: runtime and framework upgrades for Java, .NET and C++.
 
 It comes in two surfaces, and they are designed to be used together, but can also be used separately. Both run the same **Assess → Plan → Execute** model. 
 
 | Surface | Who it is for | Scale |
 | --- | --- | --- |
-| **IDE extension**: GitHub Copilot modernization for VSCode/ IntelliJ/Visual Studio| Developers | One application, interactive, hands on the code |
-| **Modernize CLI** | Architects, app owners, platform teams — but also developers | Many repositories in batch or CI/CD, *and* a single application hands-on via its interactive TUI |
+| **IDE extension**: GitHub Copilot modernization for VSCode/ IntelliJ/Visual Studio| Developers | Interactive, hands on the code |
+| **Modernize CLI** | Architects, app owners, platform teams and developers | Many repositories in batch or CI/CD, *and* a single application hands-on via its interactive TUI |
 
 The intended operating model is: the CLI assesses the estate and produces plans, someone reviews and prioritizes them into waves, and then each repository is executed — either by the CLI itself (interactively, delegated to the cloud agent, or headlessly in a pipeline), or handed off to the developer who owns it to run in the IDE.
 
 <div class="info" data-title="What is actually supported">
 
 > Disclaimer: check the documentation for the most up-to-date information on supported languages, frameworks, and features. [Link](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/languages)
-
 > - **Java, .NET, C++**: Upgrades of runtime, framework & toolset
 > - **Java, .NET only**: Migration to Azure scenarios, cloud-readiness scanning
 > - **Java only**: CVE and CWE security scanning
@@ -835,7 +834,7 @@ After installing the [GitHub Copilot modernization extension](https://marketplac
 
 <div class="tip" data-title="Look what it is made of">
 
-> After installing the extension, open the tool and agent pickers in GitHub Copilot Chat. You will find a set of `appmod-*` tools and a family of `modernize` custom agents, and the customization story is [Agent Skills](https://agentskills.io/specification) in `.github/skills/`. 
+> After installing the extension, open the tool and agent pickers in GitHub Copilot Chat. You will find a set of `GitHub Copilot modernization` tools and a family of `modernize` custom agents. 
 
 </div>
 
@@ -848,12 +847,41 @@ After installing the [GitHub Copilot modernization extension](https://marketplac
 5. **Validate**: In the Java migration flow a fixed sequence runs: CVE check → build → consistency analysis (did behavior change?) → tests → completeness analysis (did we miss occurrences?). Failures are fed back for repair.
 6. **Review**: A migration summary is produced. You read the diff and accept or discard it.
 
-The modernization agents come with **predefined migration recipes** (SQL auth → Managed Identity, message broker → Azure Service Bus, local file I/O → Blob Storage, and so on). 
+The modernization agents come with **predefined migration Tasks** (SQL auth → Managed Identity, message broker → Azure Service Bus, local file I/O → Blob Storage, and so on). 
 
-To extend these capabilities you can define **custom skills** in `.github/skills/<name>/SKILL.md`, the same [Agent Skills](https://agentskills.io/specification) format you met in [1.6](#16-agent-skills).
+To extend these tasks you can define **custom skills** in `.github/skills/<name>/SKILL.md`, the same [Agent Skills](https://agentskills.io/specification) format you met in [1.6](#16-agent-skills).
 
 ### 5.7.2 Hands-on: Run a modernization via the IDE Extension
-Clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), check out the `source` branch, open the `mi-sql-public-demo` folder, run a cloud-readiness assessment and apply the SQL database migration solution it recommends. It swaps a username/password connection for Managed Identity. Requires JDK 21+ and Maven or Gradle.
+
+*Tested on: MacOS, VSCode Insiders: 1.136.0-insider, GitHub Copilot modernization extension: 1.23.26081703*
+
+**Pre-requisites:**
+- GitHub Copilot active
+- GitHub Copilot modernization extension installed
+- JDK 21+ (pre-download the target SDK & docker image to save time) and Maven or Gradle
+
+Clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), `main` contains the source projects, `expected` contains the expected results. If you open the root of the cloned repo and open the GitHub Copilot modernization extension from the sidebar you are prompted with multiple quick start options for a multi-language app.
+![GHCPMod-QuickStart](./assets/GHCPMod-QuickStart.png)  
+If you open a dedicated folder like the `mi-sql-public-demo` folder it will prompt you with dedicated prompts for your tech stack. If you open the `Tasks` tab you can spot the previously described migration tasks you can extend with skills.
+
+Start recommended assesment including the Java Upgrade, Cloud Readiness and Security Assesment.
+
+![GHCPMod-Assessment](./assets/GHCPMod-Assessment.png)
+
+Multiple things will happen, the GitHub Copilot Chat opens with a pre-defined prompt for the security assessment while the agent starts the work and a tab will open providing you information on the progress and results of all the assessments. 
+
+> If you do not want to approve every single tool call, you should enable autopilot & allow all.
+
+> Sometimes GitHub Copilot seem to get stuck in the Chat window itself. If this happens just stop it manually and restart the assessment by prompting `continue`.
+
+When the assessment is complete you can review the results. If you select different target services you will see that the `Create plan` button updates related to the tasks that need to be performed.
+
+If you click on `Create plan` GitHub Copilot in the chat window will take over again with a dedicated prompt to create a modernization plan. Review the `plan.md` when GitHub Copilot is done. 
+
+After reviewing continue the modernization by prompting GitHub Copilot `execute plan.md`. The tasks that will be executed can be seen in the `tasks.json` (located in the same folder as the `plan.md`). 
+
+> This will take a while. If you tasked GitHub Copilot to build a Docker image, make sure Docker in installed.
+
 
 ### 5.7.3 The Modernize CLI
 
