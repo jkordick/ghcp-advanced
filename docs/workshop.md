@@ -922,28 +922,11 @@ gh auth login
 
 #### Interactive mode
 
-Running `modernize` with no arguments drops you into a TUI. The main menu is, unsurprisingly, the four things you already know: **assess** a codebase, **plan** a modernization from those findings, **execute** a plan, or run a combined **upgrade** flow that plans and executes a runtime/framework bump in one go. 
+Running `modernize` with no arguments drops you into a TUI. The main menu is, unsurprisingly, the four things you already know: **assess** a codebase, **plan** a modernization from those findings, **execute** a plan, or run a quick-start **upgrade** flow that plans and executes a runtime/framework bump in one go. 
 
-Artifacts land in your repository, which is the whole point: they are git-diffable and survive the session.
+All artifacts that will be produced during the modernization-cli run will land in your repository, which is the whole point: they are git-diffable and survive the session.
 
-| Artifact | Location |
-| --- | --- |
-| Assessment report | `.github/modernize/assessment/` |
-| Modernization plan | `.github/modernize/<plan-name>/plan.md` |
-| Task list (incl. which skills matched) | `.github/modernize/<plan-name>/tasks.json` |
-
-#### The commands you actually need
-
-| Command | What it does |
-| --- | --- |
-| `modernize assess` | Scan one or more sources, produce an assessment report |
-| `modernize plan create "<prompt>"` | Turn a natural-language goal into a reviewable `plan.md` |
-| `modernize plan execute` | Run the tasks in a plan |
-| `modernize upgrade "<target>"` | Plan **and** execute a runtime/framework upgrade in one shot |
-| `modernize help models` | List available models and their multipliers |
-| `modernize update` | Update the CLI |
-
-Check [the documentation](https://learn.microsoft.com/en-us/azure/developer/github-copilot-app-modernization/modernization-agent/cli-commands) or `--help` for more useful flags.
+> Check [the documentation](https://learn.microsoft.com/en-us/azure/developer/github-copilot-app-modernization/modernization-agent/cli-commands) or `--help` for all existing CLI commands and flags.
 
 For portfolio runs, beyond a single repository, list your repositories in `.github/modernize/repos.json`. It is picked up automatically where each entry carries a `name` plus a `url` or local `path`, and optionally a branch. You can also group repositories into logical applications so the aggregated report is organized per app.
 
@@ -981,59 +964,27 @@ modernize plan execute --plan-name oracle-to-pg --no-tty
 
 ### 5.7.4 Hands-on: run the modernization agent end to end
 
-The sample is a Spring Boot 2.7.18 app on **Java 8** backed by Oracle in Docker — a realistic upgrade target. You need Docker Desktop with ~4 GB free for the Oracle container, a JDK, and Maven.
+*Tested with version 1.0.74*
 
-**Step 1 — establish a baseline.** You cannot answer "did behavior change?" without knowing what the behavior *was*. This is the same discipline as phase 3b in 5.4; the product does not excuse you from it.
+Clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), `main` contains the source projects, `expected` contains the expected results. Navigate in the terminal to the folder `todo-web-api-use-oracle-db`.
 
-```bash
-git clone https://github.com/Azure-Samples/PhotoAlbum-Java.git   # or .../PhotoAlbum.git for .NET
-cd PhotoAlbum-Java
-git checkout -b modernize
+Type `modernize` to start the TUI.
 
-mvn clean verify          # record what passes
-docker compose up -d      # start it, upload a photo, view it, delete it
-```
+![GHCPMod-CLI_TUI](./assets/GHCPMod-CLI_TUI.png)
 
-Write down what you just did by hand. That is your smoke test, and you will repeat it at the end.
+We will just go with the flow: **assess** the current folder running locally → **create a plan** from the assessment → give it a goal → answer the clarifying questions → **read and edit `plan.md`** → **execute**.
 
-<div class="warning" data-title="The sample has one test, and it only checks the context loads">
+Kick off a locally running assessment. After the assessment is done, a report in form of a html will pop up in your browser (very similar to the report you saw earlier if you ran the agent in the IDE already).
 
-> Look at `src/test/java/.../PhotoAlbumApplicationTests.java` — it is a single `contextLoads()`. A green build here tells you almost nothing about behavior. That is *exactly* the situation most legacy code is in, and it is why the completeness and consistency stages exist. Treat the green checkmark as the beginning of your review, not the end of it.
+After reviewing the assessment report, go back into your CLI and continue with creating a modernization plan. Keep it locally to keep it simple. You can decide if you want to use the just created assessment report as the requirements basis or if you want to provide a custom prompt.
 
-</div>
+![GHCPMOD-CLI_Plan](./assets/GHCPMOD-CLI_Plan.png)
 
-**Step 2 — assess, plan, execute.**
+You need to provide some input for the modernization goal, potential deployment goal, mocks and testing. When the plan is created you are provided with the link to the `plan.md` file and a summary provided directly in the CLI.
 
-```bash
-gh auth login
-modernize
-```
+After reviewing the plan you can select it, choose if you want to create a new branch and execute it.
 
-Walk the flow: **assess** the current folder running locally → **create a plan** from the assessment → give it a goal → answer the clarifying questions → **read and edit `plan.md`** → **execute**.
-
-For the goal, use something contained like `upgrade to spring boot 3 and java 21`. That is what this sample is built to demonstrate, and it changes nothing outside your working copy.
-
-<div class="warning" data-title="Careful with deployment goals">
-
-> A goal like "deploy to Azure Container Apps" will do exactly that: provision real, billable resources in whatever subscription you are logged into. Fine when you mean it, expensive when you were just following a workshop. If you want to see the deployment story without the bill, ask it to *generate* the container and IaC assets and stop there — then read them.
-
-</div>
-
-**Step 3 — review before you trust it.**
-
-```bash
-git status
-git diff main
-
-mvn clean verify          # compare against your baseline
-docker compose up -d      # repeat your smoke test by hand
-```
-
-<div class="info" data-title="What to pay attention to">
-
-> Do not just check that it built. Ask the two questions this chapter has been asking all along: *did any behavior change that the plan did not mention?* and *did it invent anything the assessment did not find?* Consistency and completeness analysis exist precisely because those are the failure modes — but they are not guaranteed to have run on this path, so confirm what it actually validated. With one context-load test in the repo, you are the regression suite.
-
-</div>
+After GitHub Copilot done, review the executed changes, iterate further via the GHCP CLI or GHCP in VSCode, commit and push.
 
 ### 5.7.4 When to use what? ?
 
