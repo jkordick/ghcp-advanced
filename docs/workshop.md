@@ -18,7 +18,7 @@ navigation_numbering: true
 
 # GitHub Copilot Advanced
 
-*Version 3.0 — July 2026*
+*Version 3.5 — Sept 2026*
 
 Welcome! This workshop has the following parts:
 
