@@ -13,10 +13,12 @@ contacts:
 duration_minutes: 300
 tags: GitHub, Copilot, AI, Spec-Driven Development, SDD, TypeScript, Node, CLI
 navigation_levels: 3
-navigation_numbering: true
+navigation_numbering: false
 ---
 
 # GitHub Copilot Advanced
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 *Version 3.5 — Sept 2026*
 
@@ -44,7 +46,15 @@ Welcome! This workshop has the following parts:
 
 </div>
 
+<div class="info" data-title="🗄️ Database marker">
+
+> Wherever you see the 🗄️ marker in this workshop, the database is in play — a data model, data store, or migration decision worth pausing on. Treat it as a "stop and think about the database" cue.
+
+</div>
+
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 ## Pre-requisites
 
@@ -76,6 +86,8 @@ You need the following before starting:
 </div>
 
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 # Chapter 1 — Getting Started with GitHub Copilot
 
@@ -226,7 +238,7 @@ Copilot auto-loads a matching skill when it detects a relevant task, or you invo
 
 ## 1.7 MCP servers
 
-The [Model Context Protocol](https://modelcontextprotocol.io) lets GitHub Copilot connect to external tools — issue trackers, databases, browsers, your own services and knowledge bases. 
+The [Model Context Protocol](https://modelcontextprotocol.io) lets GitHub Copilot connect to external tools — issue trackers, databases 🗄️, browsers, your own services and knowledge bases. 
 
 In VS Code open the `Extensions` tab and type `@mcp` to see all available MCP servers. 
 
@@ -277,6 +289,8 @@ Once connected, Agent mode can call those tools by name.
 You now have the full toolbox. The rest of the workshop is about **using it**.
 
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 # Chapter 2 — Spec-Driven Development 
 
@@ -471,6 +485,8 @@ Everything above works in the GitHub Copilot CLI too. Same prompt files, same in
 
 ---
 
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
+
 # Chapter 3 spec-kit by GitHub
 
 [spec-kit](https://github.com/github/spec-kit) is an open-source toolkit by the GitHub team that formalizes and extends the loop you just did by hand. As it is an open-source project it can not only be used in combination with GitHub Copilot but [many more agentic AIs for coding](https://github.github.io/spec-kit/reference/integrations.html). So if you now want to give it a try with Claude, Cursor or Codex, this is the moment.
@@ -527,11 +543,15 @@ Compare what spec-kit does and what it generates against the hand-rolled prompts
 
 ---
 
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
+
 # Chapter 4 (coming soon) — Squad
 
 A dedicated chapter on [squad](https://github.com/bradygaster/squad): an open-source framework for orchestrating multi-agent development teams on top of GitHub Copilot is planned for an upcoming version of this workshop.
 
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 # Chapter 5 — App Modernization
 
@@ -570,13 +590,13 @@ The fix is the same discipline you already learned: **break the work into phases
 
 ## 5.2 Phase 1 — Rediscovery/Reverse engineering
 
-The goal of phase 1 is to produce, from the code itself, existing tests, documentation — whatever is available — a reviewable reverse engineered list of business rules, data models, and integrations.
+The goal of phase 1 is to produce, from the code itself, existing tests, documentation — whatever is available — a reviewable reverse engineered list of business rules, data models 🗄️, and integrations.
 
 You point the agent at the repository (or, more often, a *module* of it) and ask it to produce artifacts like:
 
 - **A list of business rules** — what the system does, in plain English, with examples. This is the most important artifact: it is what you will use to validate that the new implementation preserves the old behavior.
-- **A data model summary** — entities, relationships, invariants (including the ones only enforced by DB triggers or defensive `if`s scattered across services).
-- **An integration inventory** — every external system this module talks to: databases, message queues, third-party APIs, filesystem paths, hard-coded IPs.
+- **A data model summary** 🗄️ — entities, relationships, data types and encoded value domains, and invariants (including the ones only enforced by DB triggers or defensive `if`s scattered across services).
+- **An integration inventory** — every external system this module talks to: databases 🗄️, message queues, third-party APIs, filesystem paths, hard-coded IPs.
 - **A behavior open-questions list** — anything the agent could not resolve from the code alone. This becomes the interview list for the humans who still remember.
 
 <div class="tip" data-title="Curate an AGENTS.md before you go deep">
@@ -601,7 +621,7 @@ The pattern here is a walk through the rediscovery spec, flagging each element a
 
 - **Home-grown code that is now a library.** Custom retry loops, hand-rolled JSON parsers, bespoke connection pools, in-house auth — anything that has become a well-supported dependency (or a platform primitive) since the code was written.
 - **Integrations that have moved on.** SOAP endpoints that now offer REST/GraphQL, on-prem message brokers with managed equivalents, batch file drops that could be event streams, custom SFTP scripts that could be a managed connector.
-- **Data stores that no longer fit.** A single monolithic RDBMS holding data with wildly different access patterns; a NoSQL choice that was trendy in 2015 but has no operator today; a schema shaped around a UI that no longer exists.
+- **Data stores that no longer fit.** 🗄️ A single monolithic RDBMS holding data with wildly different access patterns; a NoSQL choice that was trendy in 2015 but has no operator today; a schema shaped around a UI that no longer exists.
 - **Runtimes and frameworks past their sell-by date.** End-of-life language versions, EOL frameworks, container base images with unpatched CVEs, servers nobody ships new versions of.
 - **Operational assumptions that don't survive contact with the cloud.** Local filesystem state, background threads that must survive across requests, singleton in-memory caches, "just SSH in and restart it" runbooks.
 
@@ -625,12 +645,22 @@ The plan covers:
 
 - **Target runtime and platform** — language version, framework, deployment target (containers, serverless, managed app platform).
 - **Module and service boundaries** — what stays a monolith, what splits out, and *why* (each split needs a justification tied back to the behavior spec).
-- **Data model and storage choices** — including the migration path from the legacy schema.
+- **Data model and storage choices** 🗄️ — the target store and the migration path from the legacy schema (see the database-migration note below).
 - **Integration contracts** — the concrete API/event shapes replacing each legacy integration flagged in phase 2.
 - **Cross-cutting concerns** — auth, logging, config, secrets, observability, feature flags.
 - **Migration strategy** — big-bang vs. strangler-fig vs. parallel-run, and how you keep the lights on for existing users during the transition.
 - **Risks** — the ones the agent can name from the spec plus the ones the humans add from experience.
 - and everything that might be relevant for your specific modernization scenario / tech stack.
+
+<div class="info" data-title="🗄️ Database migrations have their own failure modes">
+
+> Storage is the part of a modernization most likely to lose data quietly. When the migration path crosses a **database boundary** — an engine swap (e.g. Oracle → PostgreSQL), relational → NoSQL, or a schema reshape — pin down four things the general plan does not:
+> - **Type and constraint mapping** — every source type and rule maps to a target one (e.g. Oracle `VARCHAR2`/`NUMBER`, check constraints, triggers). Flag the ones with no clean equivalent.
+> - **Data move** — one-shot backfill vs. **dual-write + backfill** while both stores run, so you can cut over without downtime.
+> - **Cutover** — the read/write switch point, tied to the strangler-fig interface from phase 3b, with a rollback path.
+> - **Parity verification** — prove old and new agree: row counts, checksums/aggregates, and behavior tests replayed against both stores.
+
+</div>
 
 ### 5.4.2 Phase 3b — Re-write
 
@@ -745,21 +775,21 @@ Agent: `cobol-archaeologist` (read-only). Artifacts land in `docs/modernization/
 
 1. **`/01-rediscovery-bootstrap`** — scans the repo, writes `repo-map.md` (programs, copybooks, JCL, DDL, config) and drafts an `AGENTS.md` at the repo root. Always run this first, on any legacy repo. Review the `AGENTS.md` carefully — it is what every subsequent agent turn will silently load.
 2. **`/01-rediscovery-business-rules`** — pick **one** module from the reading order in `repo-map.md`. Appends business rules for that module to `business-rules.md`, citing `path/to/file:LINE` with worked examples. Re-run per module — do not sweep the whole repo in one go.
-3. **`/01-rediscovery-data-model`** — reverse-engineers entities, keys, invariants and encoded value domains from DDL, copybooks and defensive code. Appends to `data-model.md` (include a mermaid ER diagram if it helps reviewers).
-4. **`/01-rediscovery-integrations`** — inventories every external touchpoint (DB tables, files, MQ, sockets, CICS/IMS transactions, JCL triggers, hard-coded endpoints). Appends to `integrations.md` with direction and load-bearing flag.
+3. **`/01-rediscovery-data-model`** 🗄️ — reverse-engineers entities, keys, invariants and encoded value domains from DDL, copybooks and defensive code. Appends to `data-model.md` (include a mermaid ER diagram if it helps reviewers).
+4. **`/01-rediscovery-integrations`** — inventories every external touchpoint (DB tables 🗄️, files, MQ, sockets, CICS/IMS transactions, JCL triggers, hard-coded endpoints). Appends to `integrations.md` with direction and load-bearing flag.
 5. **`/01-rediscovery-open-questions`** — final sweep. Consolidates hedging language, unexplained codes, dead-branch guesses and cross-artifact contradictions into `open-questions.md` with blast-radius annotations. Take this list to the domain experts before you move on.
 
 #### Phase 2 — Substitution audit (optional)
 
 Agent: `substitution-auditor`. Artifact: `docs/modernization/02-substitution-audit/audit.md`.
 
-One prompt: **`/02-substitution-audit`**. Run it once per category (home-grown code / dated integrations / unfit data stores / EOL runtimes / cloud-hostile ops) or once per subsystem. Each run appends rows to `audit.md` with `verdict ∈ {keep-as-is, replace-with-library, replace-with-platform, retire}`, a reason, and an explicit trade-off. Rows without a trade-off get rejected by the agent by design — that is the guardrail against "let's just rewrite it in $LANG" bias. Phase 2 is optional: some engagements stop after phase 1 (e.g. you want the docs but plan to keep the mainframe another few years).
+One prompt: **`/02-substitution-audit`**. Run it once per category (home-grown code / dated integrations / unfit data stores 🗄️ / EOL runtimes / cloud-hostile ops) or once per subsystem. Each run appends rows to `audit.md` with `verdict ∈ {keep-as-is, replace-with-library, replace-with-platform, retire}`, a reason, and an explicit trade-off. Rows without a trade-off get rejected by the agent by design — that is the guardrail against "let's just rewrite it in $LANG" bias. Phase 2 is optional: some engagements stop after phase 1 (e.g. you want the docs but plan to keep the mainframe another few years).
 
 #### Phase 3a — Re-architecture
 
 Agent: `target-architect`. Artifact: `docs/modernization/03a-architecture/target-architecture.md`.
 
-One prompt: **`/03a-architecture-decision`**. Run it once per architectural decision (target runtime/platform, module boundaries, data model + migration path, an integration contract, a cross-cutting concern, migration strategy, a named risk). **Why one decision per run:** architecture decisions have consequences that later ones depend on, so running them one at a time forces you to review, commit, and let the next decision cite the previous one. If the agent judges a choice genuinely open, it lists two options with trade-offs and **stops without picking** — that is your cue to bring a human architect in.
+One prompt: **`/03a-architecture-decision`**. Run it once per architectural decision (target runtime/platform, module boundaries, data model + migration path 🗄️, an integration contract, a cross-cutting concern, migration strategy, a named risk). **Why one decision per run:** architecture decisions have consequences that later ones depend on, so running them one at a time forces you to review, commit, and let the next decision cite the previous one. If the agent judges a choice genuinely open, it lists two options with trade-offs and **stops without picking** — that is your cue to bring a human architect in.
 
 #### Phase 3b — Re-write
 
@@ -847,7 +877,7 @@ After installing the [GitHub Copilot modernization extension](https://marketplac
 5. **Validate**: In the Java migration flow a fixed sequence runs: CVE check → build → consistency analysis (did behavior change?) → tests → completeness analysis (did we miss occurrences?). Failures are fed back for repair.
 6. **Review**: A migration summary is produced. You read the diff and accept or discard it.
 
-The modernization agents come with **predefined migration Tasks** (SQL auth → Managed Identity, message broker → Azure Service Bus, local file I/O → Blob Storage, and so on). 
+The modernization agents come with **predefined migration Tasks** (SQL auth → Managed Identity 🗄️, message broker → Azure Service Bus, local file I/O → Blob Storage, and so on). 
 
 To extend these tasks you can define **custom skills** in `.github/skills/<name>/SKILL.md`, the same [Agent Skills](https://agentskills.io/specification) format you met in [1.6](#16-agent-skills).
 
@@ -862,7 +892,7 @@ To extend these tasks you can define **custom skills** in `.github/skills/<name>
 
 Clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), `main` contains the source projects, `expected` contains the expected results. If you open the root of the cloned repo and open the GitHub Copilot modernization extension from the sidebar you are prompted with multiple quick start options for a multi-language app.
 ![GHCPMod-QuickStart](./assets/GHCPMod-QuickStart.png)  
-If you open a dedicated folder like the `mi-sql-public-demo` folder it will prompt you with dedicated prompts for your tech stack. If you open the `Tasks` tab you can spot the previously described migration tasks you can extend with skills.
+If you open a dedicated folder like the `mi-sql-public-demo` 🗄️ folder it will prompt you with dedicated prompts for your tech stack. If you open the `Tasks` tab you can spot the previously described migration tasks you can extend with skills.
 
 Start recommended assesment including the Java Upgrade, Cloud Readiness and Security Assesment.
 
@@ -966,7 +996,7 @@ modernize plan execute --plan-name oracle-to-pg --no-tty
 
 *Tested with version 1.0.74*
 
-Clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), `main` contains the source projects, `expected` contains the expected results. Navigate in the terminal to the folder `todo-web-api-use-oracle-db`.
+Clone [`Azure-Samples/java-migration-copilot-samples`](https://github.com/Azure-Samples/java-migration-copilot-samples), `main` contains the source projects, `expected` contains the expected results. Navigate in the terminal to the folder `todo-web-api-use-oracle-db` 🗄️.
 
 Type `modernize` to start the TUI.
 
@@ -986,7 +1016,7 @@ After reviewing the plan you can select it, choose if you want to create a new b
 
 After GitHub Copilot done, review the executed changes, iterate further via the GHCP CLI or GHCP in VSCode, commit and push.
 
-### 5.7.4 When to use what? ?
+### 5.7.5 When to use what?
 
 | Situation | Reach for |
 | --- | --- |
@@ -998,6 +1028,8 @@ After GitHub Copilot done, review the executed changes, iterate further via the 
 | Supported stack, but nobody knows what the business rules are anymore | spec driven development for reverse engineering, modernize-cli for the upgrade |
 
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 # Chapter 6 — Context Engineering
 
@@ -1230,7 +1262,7 @@ Start a normal Chat request afterward with *"review the cart endpoint"* and comp
 ## 6.3.8 MCP tools
 **Loaded when:** tool descriptions always loaded; results injected on use
 **Context cost:** descriptions are fixed overhead; results are variable per call
-**Use for:** connecting the agent to external data and actions (issue trackers, databases, APIs)
+**Use for:** connecting the agent to external data and actions (issue trackers, databases 🗄️, APIs)
 
 [Model Context Protocol](https://modelcontextprotocol.io) servers expose tools the agent can call.
 
@@ -1341,9 +1373,13 @@ For teams scaling context engineering across repositories:
 
 ---
 
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
+
 # Chapter 7 (coming soon) - Agentic Workflows
 
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 # Chapter 8 — The GitHub Copilot SDK
 
@@ -1727,7 +1763,7 @@ Pick one. They build directly on the lab above.
 
 1. **Add a second tool.** Define `get_time` that returns the current time for a timezone. Ask the assistant *"What's the weather and time in Tokyo?"* — confirm Copilot calls **both** tools in one turn.
 2. **Tighten permissions.** Replace `approveAll` with an `onPermissionRequest` handler that logs each tool call and prompts on stdin before approving. Notice how the agent waits politely.
-3. **Build a Duck Emporium assistant.** Reuse the user stories and data model from Chapter 2. Define two tools: `search_ducks(query)` reads your seed data; `add_duck(name, theme, price_cents)` appends a new entry. Wire them into a REPL and chat with your shop's inventory.
+3. **Build a Duck Emporium assistant.** Reuse the user stories and data model 🗄️ from Chapter 2. Define two tools: `search_ducks(query)` reads your seed data; `add_duck(name, theme, price_cents)` appends a new entry. Wire them into a REPL and chat with your shop's inventory.
 
 <div class="tip" data-title="Combine with SDD">
 
@@ -1754,6 +1790,8 @@ Pick one. They build directly on the lab above.
 5. **Same patterns, any language.** TypeScript, Python, Go, Rust, .NET, Java — same shape, same mental model.
 
 ---
+
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
 # Chapter 9 (coming soon) - Security, Sandboxing & Guardrails
 
@@ -1787,12 +1825,14 @@ Happy spec-driving! 🚀
 
 ---
 
+<style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
+
 ## Cheat sheet — when to use what
 
 | Tech | Use when… | Concrete example |
 | --- | --- | --- |
 | copilot-instructions.md / AGENTS.md | You want **every agent interaction** in this repo to follow the **same rules**. Think: architecture, naming, style, forbidden patterns. | "This repo uses hexagonal architecture. Never put business logic in controllers. All prices in EUR cents." |
-| Agent Skills | You **know** that your agent needs to do something **defined** beyond reading and writing code: run tests, call an API, query a database, fetch context from an external system. | Give the review agent a skill to run `npm test` and include results in its assessment. |
+| Agent Skills | You **know** that your agent needs to do something **defined** beyond reading and writing code: run tests, call an API, query a database 🗄️, fetch context from an external system. | Give the review agent a skill to run `npm test` and include results in its assessment. |
 | Custom Agents | You have a recurring task that needs a specific persona, toolset, or workflow. **How to solve the task is deliberately open.** | A `@code-reviewer` agent that checks every change against your security checklist and domain rules. The kind of changes are the **undefined variable** in this scenario. |
 | Spec-Driven Development | You want the **one agent** to implement a feature from a structured definition: requirements, acceptance criteria, constraints up front. **For more complex scenarios.** spec-kit is one ready-made way to run this loop. | A spec for "loyalty points": earn 1 point per EUR, redeem at 100 points = 5 EUR discount. Spec defines the domain model, API contract, and edge cases before the agent writes a line of code. |
-| Squad | A task spans multiple concerns (API, database, tests, docs) and you want coordinated work across **multiple agents**. **For even more complex scenarios.** | Implementing the loyalty feature end to end: one agent handles the domain logic, another the migration, another the test suite. |
+| Squad | A task spans multiple concerns (API, database 🗄️, tests, docs) and you want coordinated work across **multiple agents**. **For even more complex scenarios.** | Implementing the loyalty feature end to end: one agent handles the domain logic, another the migration, another the test suite. |
