@@ -7,11 +7,11 @@ description: Learn the fundamentals of GitHub Copilot and then go deep advanced 
 level: intermediate
 authors:
   - "Lead: Julia Kordick"
-  - "Contributors: Artur Speth, Laetitia Maar, Taja Ly"
+  - "Contributors: Artur Speth, Laetitia Maar, Taja Ly, Diaa Radwan"
 contacts:
   - "@jkordick"
 duration_minutes: 300
-tags: GitHub, Copilot, AI, Spec-Driven Development, SDD, TypeScript, Node, CLI
+tags: GitHub, Copilot, AI, Spec-Driven Development, SDD, TypeScript, Node, CLI, Migration, Modernization
 navigation_levels: 3
 navigation_numbering: false
 ---
@@ -20,7 +20,7 @@ navigation_numbering: false
 
 <style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
-*Version 3.5 — Sept 2026*
+*Version 3.6 — Sept 2026*
 
 Welcome! This workshop has the following parts:
 
