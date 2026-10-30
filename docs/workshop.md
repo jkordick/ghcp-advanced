@@ -20,11 +20,11 @@ navigation_numbering: false
 
 <style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}</style>
 
-*Version 3.6 — Sept 2026*
+*Version 3.7 — Oct 2026*
 
 Welcome! This workshop has the following parts:
 
-1. **Getting Started with GitHub Copilot**: a single broad chapter for anyone who has never (or barely) used GitHub Copilot. It covers inline completions, Chat, Agent mode, the Copilot CLI, custom instructions, prompt files, tools and MCP servers.
+1. **Getting Started with GitHub Copilot**: a single broad chapter for anyone who has never (or barely) used GitHub Copilot. It covers inline completions, Chat, Agent mode, agent harnesses, the Copilot CLI, custom instructions, prompt files, custom agents, skills, tools and MCP servers.
 2. **Spec-Driven Development (SDD)**: You will learn how to make specifications, drive what GitHub Copilot builds for you, and you will do it end-to-end on a small TypeScript/Node feature.
 3. **Introduction of** [**spec-kit**](https://github.com/github/spec-kit) as a tool to use spec driven development conveniently with most agentic coding tools.
 4. (soon) **How to use** [**squad**](https://github.com/bradygaster/squad) open-source framework for orchestrating multi-agent development teams.
@@ -95,7 +95,7 @@ You need the following before starting:
 
 ## 1.1 Copilot in VS Code
 
-Open any folder in VS Code with the Copilot extensions installed. You will use four surfaces:
+Open any folder in VS Code with the Copilot extensions installed. You will use four surfaces, and you will learn what an *agent harness* is, because it decides which customizations from this chapter are loaded:
 
 ### Inline completions
 
@@ -118,7 +118,9 @@ Select code, press `Cmd/Ctrl + I`, and ask for a transformation: *"add input val
 
 ### Chat view (`Cmd/Ctrl+Alt+I`)
 
-The Chat side panel in "Ask" mode is for conversation about your code. Use `#` to attach context (files, symbols, selection) and `/` for built-in commands (`/explain`, `/fix`, `/tests`, `/new`).
+The Chat view is where you talk to agents next to your code. Before you send the first prompt of a session, the chat input lets you pick four things: the **Session Target** (the agent harness, see below), the **Agent** (Ask, Agent, Plan or one of your custom agents), the **Language model** (or *Auto*) and the **Permissions** level.
+
+With the **Ask** agent selected, chat is for conversation about your code. Use `#` to attach context (files, symbols, selection) and type `/` to see the commands available in the current session (e.g. `/explain`, `/fix`, `/tests`, `/plan`, `/compact`). Which commands show up depends on the harness and agent you picked.
 
 ```text
 #file:src/auth.ts /explain why does login() throw on empty passwords?
@@ -128,21 +130,41 @@ The Chat side panel in "Ask" mode is for conversation about your code. Use `#` t
 
 ### Agent mode
 
-In the Chat view, switch the mode picker from **Ask** to **Agent**. Agent mode can read, create and edit files across your workspace, run commands (with your approval) and iterate until a task is done. This is the surface you will lean on most in Chapter 2.
+In the Chat view, switch the agent picker from **Ask** to **Agent**. Agent mode can read, create and edit files across your workspace, run commands (with your approval) and iterate until a task is done. This is the surface you will lean on most in Chapter 2.
 
-<div class="tip" data-title="Pick the right mode">
+<div class="tip" data-title="Pick the right built-in agent">
 
-> - **Ask** — questions, explanations, information gathering
+> - **Ask** — questions, explanations, information gathering (read-only tools)
+> - **Plan** — research a task and produce an implementation plan for you to review (also via `/plan`)
 > - **Agent** — autonomous task execution, coding, execution
 
 </div>
 
 > **In the Copilot CLI:** there is no Ask/Agent toggle — the CLI is always agentic. Cycle into *plan mode* with `Shift+Tab` to design before changes are made, and use `--allow-all` (or `--yolo`) for unattended runs where you accept the risk of skipping approval prompts.
 
+### Agent harnesses
+
+An **agent harness** is the software layer that turns a model into an agent: it runs the agent loop, wires up tools and approvals, and decides **which customization files it loads** (you will dig into this in Chapter 6). VS Code lets you choose the harness per session with the **Session Target** control in the chat input, *before* you send the first prompt.
+
+| Session Target | What runs | What it means for this workshop |
+| --- | --- | --- |
+| **Copilot** (recommended default) | The shared Copilot runtime (Copilot SDK), the same one behind the Copilot CLI and the GitHub Copilot app. Runs in the Agent Host, so sessions can continue in the background and in other interfaces. | Reads `.github/copilot-instructions.md`, `AGENTS.md`, `.github/instructions/`, `.github/agents/`, `.github/skills/`, and MCP servers. **Does not load prompt files (`.prompt.md`)**: use skills for reusable workflows instead. |
+| **Local** | VS Code's built-in harness, running in the editor's extension host. The session is tied to the editor window. | Supports everything above **plus** prompt files, tool sets, custom agent handoffs, and the `/init` and `/create-*` shortcuts. |
+| **Claude** / **Codex** | Provider harnesses (Anthropic Claude Agent SDK, OpenAI Codex). | Use their own config locations (`CLAUDE.md`, `.claude/`, `.agents/`). Often disabled by enterprise policy. |
+| **Cloud** | The Copilot harness on managed cloud compute. It's an execution target, not a separate harness (experimental). | Same customizations as Copilot, in a separate cloud workspace. |
+
+The active harness shows as a prefix in the chat title.
+
+<div class="info" data-title="Model ≠ harness">
+
+> Changing the model or the agent (Ask / Plan / Agent / custom) does **not** change the harness. Selecting a Claude model in a **Copilot** session still uses the Copilot harness. Whenever a customization "does nothing", first check which harness you are in. The rest of this workshop flags features that only work in the **Local** harness.
+
+</div>
+
 ## 1.2 GitHub Copilot CLI
 ![GitHub Copilot CLI](assets/cli.png)
 
-GitHub Copilot is IDE independent available via the CLI. It gives you an agent setup in your terminal.
+GitHub Copilot is IDE independent available via the CLI. It gives you an agent setup in your terminal. The CLI runs the same Copilot runtime as the **Copilot** harness in VS Code, so the customizations you build for one (instructions, custom agents, skills, MCP servers) work in the other.
 
 
 **Try it.** After the installation, open a terminal, navigate to any folder or repo, run `copilot --banner` and ask "what is this repository about?"
@@ -164,17 +186,31 @@ Two things to keep in mind for both `copilot-instructions.md` and `AGENTS.md`:
 
 This repo ships with one [`.github/copilot-instructions.md`](https://github.com/jkordick/ghcp-advanced/blob/main/.github/copilot-instructions.md). Feel free to open and read it. Notice it is short, declarative and project-scoped.
 
+<div class="info" data-title="Harness differences">
+
+> - **Copilot harness:** discovers `AGENTS.md` files at the repo root, in the session's working directory and in every folder in between. Personal always-on instructions live in `~/.copilot/copilot-instructions.md`, and personal scoped ones in `~/.copilot/instructions/`.
+> - **Local harness:** attaches the root `AGENTS.md` by default. Nested `AGENTS.md` files require the experimental `chat.useNestedAgentsMdFiles` setting. Personal instructions are stored in your VS Code profile.
+> - To manage all of these in one place, run **Chat: Open Customizations** to open the Agent Customizations editor. It shows the customizations for the harness that is currently selected.
+
+</div>
+
 > **In the Copilot CLI:** the same files are picked up automatically — `.github/copilot-instructions.md`, `.github/instructions/**/*.instructions.md` and `AGENTS.md` — when you launch `copilot` inside the repo. No additional configuration needed.
 
 ## 1.4 Prompt files
 
-Prompt files (`*.prompt.md`) are **reusable prompts** stored in your repo. They show up in Chat as runnable commands.
+Prompt files (`*.prompt.md`) are **reusable prompts** stored in your repo. They show up in Chat as runnable slash commands that you invoke manually.
+
+<div class="warning" data-title="Local harness only">
+
+> Prompt files run **only in the Local harness**. Before you try this section, open a new chat and set **Session Target** to **Local**. The default **Copilot** harness, the Copilot CLI and the GitHub Copilot app do **not** load `.prompt.md` files. For a reusable workflow that works everywhere, use a skill (see [1.6](#16-agent-skills)).
+
+</div>
 
 Create `.github/prompts/add-test.prompt.md`:
 
 <div class="tip" data-title="Tip">
 
-> You can either create it manually or `CTRL/CMD + Shift + P` -> New Prompt File...
+> You can create it manually or run `CTRL/CMD + Shift + P` -> **Chat: New Prompt File**. You can also open the Agent Customizations editor (**Chat: Open Customizations** -> **Prompts**). With **Local** selected, you can also type `/create-prompt` followed by a description and let the agent write it.
 
 </div>
 
@@ -186,9 +222,9 @@ description: Add unit tests
 Look at the source I provide. Write unit tests that cover the main exported functions. Place tests next to the source as `<filename>.test.ts` and run them with `vitest`.
 ```
 
-Run it from Chat with `/add-test`. Prompt files are the *primitive* you will build SDD on top of in Chapter 2.
+Run it from a **Local** chat with `/add-test`, through **Chat: Run Prompt**, or with the play button in the editor title when the file is open. Prompt files can pin an `agent`, `model` and `tools` list in their frontmatter, and they can use `${input:name}` placeholders for values that VS Code asks you for.
 
-> **In the Copilot CLI:** `.prompt.md` files are a VS Code Chat feature and are not exposed as slash commands in the CLI. For reusable workflows in the CLI, reach for custom agents (1.5) or skills (1.6) instead — or just paste the prompt body into your session.
+> **In the Copilot harness and the Copilot CLI:** `.prompt.md` files are not loaded. Create a user-invoked **skill** instead (shown at the end of [1.6](#16-agent-skills)). If you already have prompt files, run **Chat: Open Customizations** with **Copilot** selected, go to **Migrations**, and use **Convert Prompt to Skills**.
 
 ## 1.5 Custom agents
 
@@ -198,7 +234,7 @@ Create `.github/agents/test-specialist.agent.md`:
 
 <div class="tip" data-title="Tip">
 
-> Same trick available like above. With `CTRL/CMD + Shift + P`-> Create new agent...
+> Use **Chat: New Custom Agent** from the Command Palette (`CTRL/CMD + Shift + P`), or open **Chat: Open Customizations** -> **Agents** -> **New Agent**. Select your intended harness first, because the editor offers storage locations based on it.
 
 </div>
 
@@ -212,7 +248,7 @@ You are a testing specialist focused on improving code quality through comprehen
 files — avoid modifying production code unless specifically requested.
 ```
 
-Pick the agent from the mode dropdown in VS Code Chat, or use it in the Copilot CLI with the `/agent` command. See [Creating custom agents](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents) for full configuration options.
+Pick the agent from the agent picker in VS Code Chat (it works in both the **Copilot** and **Local** harness), or use it in the Copilot CLI with the `/agent` command. Personal agents for the Copilot harness and the CLI live in `~/.copilot/agents/`. Set `user-invocable: false` to hide an agent from the picker but keep it available as a subagent. *Handoffs* (buttons that pass control to the next agent) are a Local-harness feature. See [Custom agents in VS Code](https://code.visualstudio.com/docs/agent-customization/custom-agents) and [Creating custom agents](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents) for full configuration options.
 
 > **In the Copilot CLI:** same files (`.github/agents/` for the repo, `~/.copilot/agents/` for personal). Pick one interactively with `/agent`, mention it in a prompt (*"use the test-specialist agent to…"*), or launch it directly: `copilot --agent=test-specialist --prompt "…"`. The CLI also ships built-in agents (Explore, Task, General purpose, Code review, Research, Rubber duck).
 
@@ -220,7 +256,14 @@ Pick the agent from the mode dropdown in VS Code Chat, or use it in the Copilot 
 
 If you know what you want to do (e.g. converting a svg to a png) you can just tell the agent "how to do it" with the help of a skill.
 
-Skills live in `.github/skills/` (project) or `~/.copilot/skills/` (personal). Create one with `Cmd/Ctrl+Shift+P` → *Generate Skill…* or type `/create-skill` in Chat.
+Skills are folders with a `SKILL.md` file plus optional scripts, templates and examples. Where they live:
+
+| Scope | Copilot harness, Local harness & Copilot CLI | Also recognized |
+| --- | --- | --- |
+| Project (committed) | `.github/skills/<name>/SKILL.md` | `.agents/skills/`, `.claude/skills/` |
+| Personal | `~/.copilot/skills/<name>/SKILL.md` | `~/.agents/skills/`, `~/.claude/skills/` |
+
+To create one in VS Code, run **Chat: Open Customizations** -> **Skills** -> **New Skill**. In any harness you can also just ask the agent: *"Create a project skill named `test-changes` in `.github/skills/` that …"*. With **Local** selected, `/create-skill` and `/skills` are available as shortcuts. You can also install skills from **Browse** in the Agent Customizations editor (Customization Marketplace, preview; not available in Local sessions) or with `gh skill`.
 
 This repo ships with three example skills in [`.github/skills/`](https://github.com/jkordick/ghcp-advanced/tree/main/.github/skills):
 
@@ -232,21 +275,70 @@ This repo ships with three example skills in [`.github/skills/`](https://github.
 
 Open [`.github/skills/run-tests/SKILL.md`](https://github.com/jkordick/ghcp-advanced/tree/main/.github/skills/run-tests/SKILL.md) to see a minimal example.
 
-Copilot auto-loads a matching skill when it detects a relevant task, or you invoke it explicitly with `/run-tests`. Skills are an [open standard](https://agentskills.io/) — they work across VS Code, the Copilot CLI and any other agentic AI.
+Copilot auto-loads a matching skill when it detects a relevant task, or you invoke it explicitly with `/run-tests`. Skills are an [open standard](https://agentskills.io/) — they work across VS Code (Copilot, Local, and with matching folders Claude and Codex), the Copilot CLI, the GitHub Copilot app and other skills-compatible agents.
 
-> **In the Copilot CLI:** the same `.github/skills/` and `~/.copilot/skills/` locations are honored — no per-tool config required.
+The `SKILL.md` frontmatter controls how a skill is discovered and invoked:
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `name` | Yes | Lowercase letters, numbers and hyphens only. **Must match the folder name.** Invalid names make the skill fail silently. |
+| `description` | Yes | What the skill does **and when to use it**. The agent uses this to decide whether to load it automatically. |
+| `argument-hint` | No | Hint shown in the chat input when you invoke the skill as `/name` (e.g. `<storyId>`). |
+| `user-invocable` | No | `false` hides the skill from the `/` menu but keeps automatic loading. Default `true`. |
+| `disable-model-invocation` | No | `true` means the agent never loads the skill on its own. It runs only when you type `/name`. Default `false`. |
+| `context` | No | `fork` runs the skill in its own subagent context instead of inline (experimental). |
+
+> **In the Copilot CLI:** the same `.github/skills/` and `~/.copilot/skills/` locations are honored — no per-tool config required. Use `/skills list` to see what is loaded, `/skills reload` after adding one mid-session, and `/skills info <name>` to check where it came from.
+
+### Skills as reusable prompts in the Copilot harness
+
+Because the **Copilot** harness (and therefore the Copilot CLI and the GitHub Copilot app) doesn't load prompt files, **skills are how you build reusable, on-demand workflows there**. A skill with `disable-model-invocation: true` behaves like a prompt file: it does nothing until you type `/name`.
+
+Here is the `add-test` prompt from [1.4](#14-prompt-files) as a skill. Create `.github/skills/add-test/SKILL.md`:
+
+```markdown
+---
+name: add-test
+description: Add unit tests for the source file or symbol the user names.
+argument-hint: <file or function>
+disable-model-invocation: true
+---
+Look at the source the user names after the command. Write unit tests that cover the main exported functions. Place tests next to the source as `<filename>.test.ts` and run them with `vitest`.
+```
+
+Open a new chat with **Session Target** set to **Copilot** and run `/add-test src/math.ts`. The same command works in the Copilot CLI.
+
+| | Prompt file (`.prompt.md`) | User-invoked skill (`SKILL.md`) |
+| --- | --- | --- |
+| Harnesses | Local only | Copilot, Local, Copilot CLI, GitHub Copilot app, other skills-compatible agents |
+| Inputs | `${input:name}` prompts you for values | Text after the command (`/add-test src/math.ts`); use `argument-hint` to guide the user |
+| Pin agent / model / tools | `agent`, `model`, `tools` in frontmatter | Not in the skill. Pair it with a custom agent if you need that |
+| Bundled files | No | Yes: scripts, templates, examples next to `SKILL.md` |
+
+<div class="tip" data-title="Migrating existing prompt files">
+
+> With **Copilot** selected, run **Chat: Open Customizations** -> **Migrations** -> **Convert Prompt to Skills**. VS Code generates skills with `disable-model-invocation: true` and maps `name`, `description` and argument hints. It **drops** `agent`, `model` and `tools`, so review each result. Use **Migrate with Agent** if a prompt depends on a specific agent or tool set.
+
+</div>
 
 ## 1.7 MCP servers
 
 The [Model Context Protocol](https://modelcontextprotocol.io) lets GitHub Copilot connect to external tools — issue trackers, databases 🗄️, browsers, your own services and knowledge bases. 
 
-In VS Code open the `Extensions` tab and type `@mcp` to see all available MCP servers. 
+In VS Code, open the `Extensions` view and type `@mcp` to browse the MCP server gallery. You can also run **MCP: Add Server** for a guided setup, or go to **Chat: Open Customizations** -> **MCP Servers** -> **Add Server**.
 
-Configure custom MCP servers per workspace in `.vscode/mcp.json`, e.g.:
+VS Code understands two configuration formats:
+
+| Format | Location | Top-level key | Read by |
+| --- | --- | --- | --- |
+| **Portable Copilot format** (recommended for sharing) | `.mcp.json` at the workspace root, or `~/.copilot/mcp-config.json` (user) | `mcpServers` | The Copilot harness and the Copilot CLI read it directly. |
+| **VS Code format** | `.vscode/mcp.json` or your VS Code profile | `servers` | Local harness. VS Code forwards eligible servers to Copilot harness sessions, but **not** servers that use `${input:...}` prompts. |
+
+Add a project-wide server in `.mcp.json` so that VS Code, the CLI and your teammates all pick it up:
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/"
@@ -255,7 +347,9 @@ Configure custom MCP servers per workspace in `.vscode/mcp.json`, e.g.:
 }
 ```
 
-> **In the Copilot CLI:** the GitHub MCP server is preconfigured. Add more with `/mcp add` (interactive form, save with `Ctrl+S`). The CLI does not read `.vscode/mcp.json` — server definitions live in `~/.copilot/mcp-config.json` (or wherever `COPILOT_HOME` points).
+For secrets, reference environment variables (`"Authorization": "Bearer ${GITHUB_TOKEN}"`) and never commit literal values. If you already have a `.vscode/mcp.json`, the **Migrations** page in the Agent Customizations editor can move compatible servers to `.mcp.json` for you.
+
+> **In the Copilot CLI:** the GitHub MCP server is preconfigured. Add more with `/mcp add` (interactive form, save with `Ctrl+S`). The CLI does not read `.vscode/mcp.json`. It reads `~/.copilot/mcp-config.json` (or wherever `COPILOT_HOME` points) and the project's `.mcp.json`.
 
 Once connected, Agent mode can call those tools by name. 
 
@@ -278,12 +372,14 @@ Once connected, Agent mode can call those tools by name.
 | Inline completion | Local, line-level help |
 | Inline chat | Targeted edits to a selection |
 | Chat (Ask) | Questions, explanations |
+| Chat (Plan) | A reviewable implementation plan before any edits |
 | Chat (Agent) | Autonomous tasks — the SDD workhorse |
+| Agent harness (Session Target) | Picks the runtime: **Copilot** (shared with CLI & app) or **Local** (VS Code built-in) — determines which customizations load |
 | Copilot CLI | Same power, in the terminal / CI |
 | copilot-instructions.md<br>/AGENTS.md | Durable, project-wide rules |
-| Prompt files | Reusable, parameterizable workflows |
+| Prompt files | Reusable, parameterizable workflows — **Local harness only** |
 | Custom agents | Specialized personas + tool scoping |
-| Agent skills | Packaged multi-step capabilities, loaded on demand |
+| Agent skills | Packaged multi-step capabilities, loaded on demand — or invoked as `/name`, the portable replacement for prompt files |
 | MCP servers | Real-world tools and data the agent can use |
 
 You now have the full toolbox. The rest of the workshop is about **using it**.
@@ -348,49 +444,63 @@ Add a minimal `AGENTS.md` in the `duck-emporium/` folder:
 - Tests live next to source as `*.test.ts`, run with `vitest`.
 - User stories live in `../user-stories/`. Specs go in `specs/<story-id>/`.
 - Never edit `user-stories/**`.
-- Only edit files under `specs/**` when invoked through an `sdd-*` prompt.
-- Follow the workflow in `.github/prompts/sdd-*.prompt.md`.
+- Only edit files under `specs/**` when invoked through an `sdd-*` skill.
+- Follow the workflow in `.github/skills/sdd-*/SKILL.md`.
 - Payments are MOCKED. Never integrate a real payment provider.
 ```
 
-### 2.2.2 Add the SDD prompt files
+### 2.2.2 Add the SDD skills
 
-All prompts assume you run them from inside the `duck-emporium/` folder; paths are relative to that working directory. They use a `${input:storyId}` placeholder, so VS Code will prompt you for the story id when you invoke them.
+You package each SDD step as an **agent skill** that you invoke yourself (see [1.6](#16-agent-skills)). Skills work in the default **Copilot** harness, in the **Local** harness, in the Copilot CLI and in the GitHub Copilot app, so the same loop runs wherever you are.
+
+Each skill sets `disable-model-invocation: true`. **You** drive the loop: the agent must never decide on its own to jump from spec to plan, or from plan to code. That's the review gate SDD depends on. The story id (and, for `sdd-implement`, the task number) is passed as the text after the command, e.g. `/sdd-spec browse-catalog`.
+
+All skills assume you run them from inside the `duck-emporium/` folder; paths are relative to that working directory. Each skill lives in its own folder under `.github/skills/`, and the folder name **must** match the `name` field.
 
 <div class="tip" data-title="Remember!">
 
-> You can create the prompt files manually or `CTRL/CMD + Shift + P` → *New Prompt File…* and copy-paste the content below.
+> You can create the files manually, or use **Chat: Open Customizations** -> **Skills** -> **New Skill** next to **Workspace** and paste the content below.
 
 </div>
 
-Create `.github/prompts/sdd-spec.prompt.md`:
+Create `.github/skills/sdd-spec/SKILL.md`:
 
 ```markdown
 ---
 name: sdd-spec
-description: Turn a user story into a reviewable spec.
+description: Turn a user story into a reviewable spec. Only run when the user invokes /sdd-spec.
+argument-hint: <storyId>
+disable-model-invocation: true
 ---
-Goal: produce `specs/${input:storyId}/spec.md` from `../user-stories/${input:storyId}.md`.
+Input: the story id the user passed after the command (e.g. `browse-catalog`).
+If no story id was given, ask for it before doing anything else.
+
+Goal: produce `specs/<storyId>/spec.md` from `../user-stories/<storyId>.md`.
 
 Rules:
 - Read the user story file first. Treat it as raw input, not as a spec.
 - Ask clarifying questions ONE at a time. Use the "Open questions" section of the user story as a starting point but go beyond it.
-- Do not write code or any file other than `specs/${input:storyId}/spec.md`.
+- Do not write code or any file other than `specs/<storyId>/spec.md`.
 - When you have enough information, write the spec using this outline:
   Problem, Users, Scope (in/out), Functional requirements,
   Non-functional requirements, Acceptance criteria, Open questions.
 - Stop after writing the spec and wait for approval.
 ```
 
-Now create three more prompt files in `.github/prompts/`, each consuming the previous artifact and producing exactly one new one:
+Now create three more skills, each consuming the previous artifact and producing exactly one new one:
 
-`sdd-plan.prompt.md`:
+`.github/skills/sdd-plan/SKILL.md`:
 
 ```markdown
 ---
-description: Turn an approved spec into a technical plan.
+name: sdd-plan
+description: Turn an approved spec into a technical plan. Only run when the user invokes /sdd-plan.
+argument-hint: <storyId>
+disable-model-invocation: true
 ---
-Goal: produce `specs/${input:storyId}/plan.md` from `specs/${input:storyId}/spec.md`.
+Input: the story id the user passed after the command. If missing, ask for it.
+
+Goal: produce `specs/<storyId>/plan.md` from `specs/<storyId>/spec.md`.
 
 Rules:
 - Read the spec first. If it has unresolved "Open questions", stop and ask.
@@ -400,13 +510,18 @@ Rules:
 - Stop after writing the plan and wait for approval.
 ```
 
-`sdd-tasks.prompt.md`:
+`.github/skills/sdd-tasks/SKILL.md`:
 
 ```markdown
 ---
-description: Break an approved plan into an ordered task list.
+name: sdd-tasks
+description: Break an approved plan into an ordered task list. Only run when the user invokes /sdd-tasks.
+argument-hint: <storyId>
+disable-model-invocation: true
 ---
-Goal: produce `specs/${input:storyId}/tasks.md` from `specs/${input:storyId}/plan.md`.
+Input: the story id the user passed after the command. If missing, ask for it.
+
+Goal: produce `specs/<storyId>/tasks.md` from `specs/<storyId>/plan.md`.
 
 Rules:
 - Each task is independently committable and has a clear acceptance check
@@ -416,13 +531,19 @@ Rules:
 - Stop after writing tasks.md and wait for approval.
 ```
 
-`sdd-implement.prompt.md`:
+`.github/skills/sdd-implement/SKILL.md`:
 
 ```markdown
 ---
-description: Implement a single numbered task from the task list.
+name: sdd-implement
+description: Implement a single numbered task from an SDD task list. Only run when the user invokes /sdd-implement.
+argument-hint: <storyId> <taskNumber>
+disable-model-invocation: true
 ---
-Goal: implement task `${input:taskNumber}` from `specs/${input:storyId}/tasks.md`.
+Input: the story id and the task number the user passed after the command
+(e.g. `browse-catalog 3`). If either is missing, ask for it.
+
+Goal: implement task `<taskNumber>` from `specs/<storyId>/tasks.md`.
 
 Rules:
 - Read spec.md, plan.md and tasks.md before touching any code.
@@ -432,22 +553,31 @@ Rules:
 - Stop after the task is green and wait for approval to commit.
 ```
 
+<div class="info" data-title="Why skills and not prompt files?">
+
+> Earlier versions of this workshop used `.prompt.md` files with `${input:storyId}` placeholders. Prompt files now run only in VS Code's **Local** harness. User-invoked skills give you the same "run on demand" behavior in every Copilot surface. The one thing you lose is the input dialog, so you type the story id after the command instead.
+
+</div>
+
 ### 2.2.3 Run the loop, story by story
 
-Pick story 1 (`browse-catalog`). In Chat (Agent mode), invoke the prompt. VS Code will ask you for the `storyId` input:
+Open a new chat with **Session Target** set to **Copilot** (the default) and **Agent** selected in the agent picker. Type `/` and check that the four `sdd-*` skills show up. If they don't, check that each folder name matches its `name` field.
+
+Pick story 1 (`browse-catalog`) and invoke the first skill with the story id:
 
 ```text
-/sdd-spec
+/sdd-spec browse-catalog
 ```
 
-When prompted, enter `browse-catalog`. Then answer the clarifying questions. Expect to make a foundational decision here that will affect every later story — e.g., *"is this a JSON API or a server-rendered web app?"*, *"what fields does a `Duck` have?"*. Review `specs/browse-catalog/spec.md`. Iterate until you are happy.
+Then answer the clarifying questions. Expect to make a foundational decision here that will affect every later story — e.g., *"is this a JSON API or a server-rendered web app?"*, *"what fields does a `Duck` have?"*. Review `specs/browse-catalog/spec.md`. Iterate until you are happy.
 
-Then run the next prompts in the loop (each will prompt for `storyId`, and `sdd-implement` will also ask for `taskNumber`):
+Then run the next skills in the loop, reviewing the artifact after each one. `sdd-implement` takes the task number as a second argument and is run once per task:
 
 ```text
-/sdd-plan
-/sdd-tasks
-/sdd-implement
+/sdd-plan browse-catalog
+/sdd-tasks browse-catalog
+/sdd-implement browse-catalog 1
+/sdd-implement browse-catalog 2
 ```
 
 <div class="tip" data-title="Tip">
@@ -481,7 +611,13 @@ When the story is done, move on to story 2 (`duck-detail`), which builds on stor
 
 ## 2.3 SDD in the Copilot CLI
 
-Everything above works in the GitHub Copilot CLI too. Same prompt files, same instructions — just invoked from `copilot` in your terminal.
+Everything above works in the GitHub Copilot CLI too. The CLI runs the same Copilot runtime as the **Copilot** harness in VS Code and reads the same `.github/skills/` folder and `AGENTS.md`. Start `copilot` inside `duck-emporium/`, run `/skills list` to confirm the four `sdd-*` skills are loaded, then drive the loop exactly as before:
+
+```text
+/sdd-spec browse-catalog
+```
+
+Use `Shift+Tab` to switch into plan mode if you want to talk through a decision before the agent writes a file.
 
 ---
 
@@ -497,7 +633,7 @@ Everything above works in the GitHub Copilot CLI too. Same prompt files, same in
 
 </div>
 
-It ships a `specify` CLI that scaffolds the `specs/` layout, prompt files and chatmodes for you, and integrates with several AI agents.
+It ships a `specify` CLI that scaffolds the `specs/` layout and the SDD steps for you, and integrates with several AI agents. For GitHub Copilot, a fresh install uses the **skills layout** by default: each step becomes an agent skill under `.github/skills/speckit-<step>/SKILL.md`. These skills work in the VS Code **Copilot** harness, the **Local** harness and the Copilot CLI.
 
 <div class="warning" data-title="Enterprise organization check">
 
@@ -519,18 +655,24 @@ cd duck-emporium
 
 <div class="warning" data-title="Workaround">
 
-> `specify init duck-emporium` creates a nested layout (a `duck-emporium/` folder containing `.specify/`, `.github/`, scripts, etc.). For the agent to pick up the slash commands and templates in this workshop's setup, cut those folders out of `duck-emporium/` and paste them at the repository root, so they are easily accessible. Alternatively, run `specify init .` from inside an empty target folder to avoid the nesting entirely.
+> `specify init duck-emporium` creates a nested layout (a `duck-emporium/` folder containing `.specify/`, `.github/`, scripts, etc.). For the agent to pick up the skills and templates in this workshop's setup, cut those folders out of `duck-emporium/` and paste them at the repository root, so they are easily accessible. Alternatively, run `specify init .` from inside an empty target folder to avoid the nesting entirely.
 
 </div>
 
-This creates a structured layout with the SDD phases (`/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement` and some additional steps) pre-wired as slash commands.
+This creates a structured layout with the SDD phases (`/speckit-specify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-implement`, `/speckit-converge` and some additional steps) pre-wired as skills that you invoke from chat.
+
+<div class="info" data-title="Dots vs. hyphens">
+
+> Older spec-kit versions and many blog posts use dotted commands (`/speckit.specify`) backed by prompt files and custom agents. That "commands layout" is still available with `specify init … --integration copilot --integration-options="--commands"`. Its prompt files only run in VS Code's **Local** harness. With the default skills layout, use the hyphenated names.
+
+</div>
 
 ## 3.2 Run the same loop, but guided
 
 In GitHub Copilot Chat:
 
 ```text
-/speckit.specify checkout #user-stories and create a specification out of them
+/speckit-specify checkout #user-stories and create a specification out of them
 ```
 
 <div class="tip" data-title="Branching">
@@ -539,7 +681,7 @@ In GitHub Copilot Chat:
 
 </div>
 
-Compare what spec-kit does and what it generates against the hand-rolled prompts from Chapter 2. You will recognize every step, spec-kit just removes the boilerplate.
+Compare what spec-kit does and what it generates against the hand-rolled `sdd-*` skills from Chapter 2. You will recognize every step, spec-kit just removes the boilerplate.
 
 ---
 
@@ -691,7 +833,7 @@ At this point the artifacts you produced in earlier phases pay off again: the ar
 
 You have two ways to run this hands-on. Both cover the same four phases; they differ only in *how you drive the agent(s)*. Pick one — you do **not** need to do both.
 
-- **Track A — spec-kit driven (recommended).** You drive the loop yourself with the `/speckit.*` commands from [Chapter 3](#chapter-3-spec-kit-by-github), one full loop per phase. No bespoke assets required. This is the natural continuation of the spec-kit chapter and is stack-agnostic.
+- **Track A — spec-kit driven (recommended).** You drive the loop yourself with the `/speckit-*` skills from [Chapter 3](#chapter-3-spec-kit-by-github), one full loop per phase. No bespoke assets required. This is the natural continuation of the spec-kit chapter and is stack-agnostic.
 - **Track B — GitHub Copilot-native custom agents + prompts (alternative).** You run a pre-built kit of custom agents and prompt files that productize the exact same four phases into turnkey, one-artifact-per-run commands. This track doubles as a capstone for the custom agents (1.5) and prompt files (1.4) you met earlier.
 
 If your legacy system happens to be Java, .NET or C++, there is also a vendor-built route: [5.7](#57-off-the-shelf--the-github-copilot-modernization-agents) covers the GitHub Copilot modernization agents. Do the hands-on first — knowing what the loop *should* look like is what lets you judge whether the product's output is any good.
@@ -708,7 +850,7 @@ We prepared a Java legacy application for you to modernize. You can find it [her
 
 After cloning the repository, initialize spec-kit as you did in [Chapter 3](#chapter-3-spec-kit-by-github).
 
-Then run **one full spec-kit loop per phase**. Treat each phase's *modernization activity itself* as the "feature" being built: `/speckit.specify` describes the deliverables and constraints, `/speckit.plan` designs the approach (reading order, tooling, heuristics), `/speckit.tasks` breaks it into work items, and `/speckit.implement` executes them and produces the actual artifacts. The kick-off prompts below only cover `/speckit.specify` — spec-kit prompts you for the rest.
+Then run **one full spec-kit loop per phase**. Treat each phase's *modernization activity itself* as the "feature" being built: `/speckit-specify` describes the deliverables and constraints, `/speckit-plan` designs the approach (reading order, tooling, heuristics), `/speckit-tasks` breaks it into work items, and `/speckit-implement` executes them and produces the actual artifacts. The kick-off prompts below only cover `/speckit-specify` — spec-kit prompts you for the rest.
 
 <div class="tip" data-title="Why specify the activity, not just do it">
 
@@ -719,33 +861,33 @@ Then run **one full spec-kit loop per phase**. Treat each phase's *modernization
 #### Phase 1 — Rediscovery
 
 ```text
-/speckit.specify Specify a rediscovery of this legacy Java monolith. Deliverables: (1) a business-rules document in plain English with concrete code references and examples, (2) a data-model summary — entities, relationships, invariants (including those enforced only by defensive code or DB constraints), (3) an integration inventory (every external system, filesystem path, hard-coded endpoint), (4) an open-questions list for anything the code alone cannot answer. Constraints: no code changes, no modernization proposals, stop and ask before guessing behavior. Success: a domain reviewer can validate each rule against a concrete code reference.
+/speckit-specify Specify a rediscovery of this legacy Java monolith. Deliverables: (1) a business-rules document in plain English with concrete code references and examples, (2) a data-model summary — entities, relationships, invariants (including those enforced only by defensive code or DB constraints), (3) an integration inventory (every external system, filesystem path, hard-coded endpoint), (4) an open-questions list for anything the code alone cannot answer. Constraints: no code changes, no modernization proposals, stop and ask before guessing behavior. Success: a domain reviewer can validate each rule against a concrete code reference.
 ```
 
-Then run `/speckit.plan`, `/speckit.tasks`, `/speckit.implement` to design the reading order, split by module/subsystem, and produce the artifacts. Do the same after each `/speckit.specify` in the phases below.
+Then run `/speckit-plan`, `/speckit-tasks`, `/speckit-implement` to design the reading order, split by module/subsystem, and produce the artifacts. Do the same after each `/speckit-specify` in the phases below.
 
 #### Phase 2 — Substitution audit
 
 ```text
-/speckit.specify Specify a substitution audit over the rediscovery artifacts (phase 1). Deliverables: (1) a substitution-audit table with columns *legacy element*, *proposal* (keep-as-is | replace-with-library | replace-with-platform | retire), *reason*, *trade-off*; (2) coverage spanning home-grown code with modern equivalents, dated integrations, unfit data stores, EOL runtimes/frameworks, and cloud-hostile operational assumptions. Constraint: audit only — do not design the new architecture. Success: every row links back to a specific rediscovery entry.
+/speckit-specify Specify a substitution audit over the rediscovery artifacts (phase 1). Deliverables: (1) a substitution-audit table with columns *legacy element*, *proposal* (keep-as-is | replace-with-library | replace-with-platform | retire), *reason*, *trade-off*; (2) coverage spanning home-grown code with modern equivalents, dated integrations, unfit data stores, EOL runtimes/frameworks, and cloud-hostile operational assumptions. Constraint: audit only — do not design the new architecture. Success: every row links back to a specific rediscovery entry.
 ```
 
 #### Phase 3a — Re-architecture
 
 ```text
-/speckit.specify Specify the target architecture for the modernized system, informed by the rediscovery (phase 1) and substitution audit (phase 2). Deliverables: (1) target runtime and platform, (2) module/service boundaries, (3) data model and migration path from the legacy schema, (4) integration contracts replacing each flagged legacy integration, (5) cross-cutting concerns (auth, logging, config, secrets, observability), (6) migration strategy (default: strangler-fig), (7) risks. Constraint: architecture only — no code, no per-module rewrite tasks yet. Success: every architectural choice traces back to either a preserved business rule or a substitution-audit row.
+/speckit-specify Specify the target architecture for the modernized system, informed by the rediscovery (phase 1) and substitution audit (phase 2). Deliverables: (1) target runtime and platform, (2) module/service boundaries, (3) data model and migration path from the legacy schema, (4) integration contracts replacing each flagged legacy integration, (5) cross-cutting concerns (auth, logging, config, secrets, observability), (6) migration strategy (default: strangler-fig), (7) risks. Constraint: architecture only — no code, no per-module rewrite tasks yet. Success: every architectural choice traces back to either a preserved business rule or a substitution-audit row.
 ```
 
 #### Phase 3b — Re-write
 
 ```text
-/speckit.specify Specify the rewrite of a single module (module boundaries defined in the re-architecture, phase 3a), informed by the rediscovery (phase 1), substitution audit (phase 2) and target architecture (phase 3a). Deliverables: (1) functional requirements for the module, (2) behavior-preserving acceptance tests derived from the phase-1 business rules — every functional requirement must map to at least one, (3) an interface contract identical to the legacy code so traffic can be switched gradually. Constraint: if a business rule is ambiguous or missing, stop and ask — never invent behavior. Note: repeat this phase-3b loop module by module until the legacy code path is empty. Success: legacy and new implementation produce identical results for the acceptance tests.
+/speckit-specify Specify the rewrite of a single module (module boundaries defined in the re-architecture, phase 3a), informed by the rediscovery (phase 1), substitution audit (phase 2) and target architecture (phase 3a). Deliverables: (1) functional requirements for the module, (2) behavior-preserving acceptance tests derived from the phase-1 business rules — every functional requirement must map to at least one, (3) an interface contract identical to the legacy code so traffic can be switched gradually. Constraint: if a business rule is ambiguous or missing, stop and ask — never invent behavior. Note: repeat this phase-3b loop module by module until the legacy code path is empty. Success: legacy and new implementation produce identical results for the acceptance tests.
 ```
 
 #### Phase 4 (optional) — CI/CD and deployment
 
 ```text
-/speckit.specify Specify the deployment for the modernized system, informed by the target architecture (phase 3a) and the current build/test setup. Deliverables: (1) CI pipeline (build, test, scan), (2) infrastructure-as-code for the platform chosen in the re-architecture (phase 3a), (3) secrets/config/observability wiring, (4) promotion path dev → staging → production, (5) rollback path, (6) strangler-fig traffic-shifting mechanism for modules rewritten in phase 3b. Constraint: no live deployment during specify/plan/tasks. Success: from these artifacts alone, a fresh environment can be created and a rewritten module cut over end-to-end.
+/speckit-specify Specify the deployment for the modernized system, informed by the target architecture (phase 3a) and the current build/test setup. Deliverables: (1) CI pipeline (build, test, scan), (2) infrastructure-as-code for the platform chosen in the re-architecture (phase 3a), (3) secrets/config/observability wiring, (4) promotion path dev → staging → production, (5) rollback path, (6) strangler-fig traffic-shifting mechanism for modules rewritten in phase 3b. Constraint: no live deployment during specify/plan/tasks. Success: from these artifacts alone, a fresh environment can be created and a rewritten module cut over end-to-end.
 ```
 
 ### 5.6.2 Track B (alternative) — Copilot-native custom agents + prompts
@@ -754,12 +896,12 @@ This track ships the same four phases as a pre-built kit of **custom agents** (p
 
 **Get the kit.** The agents and prompts live on the [`app-mod-ghcp-native-start`](https://github.com/jkordick/ghcp-advanced/tree/app-mod-ghcp-native-start) branch of this repo, under `.github/agents/` and `.github/prompts/`. Fork & clone [Bank-of-Z](https://github.com/IBM/Bank-of-Z), open it in VS Code (or `cd` into it), then copy the `.github/agents` and `.github/prompts` folders from that branch into the cloned repository.
 
-**How the prompts and agents work together.** The `.github/agents/*.agent.md` files are the **personas** — each one is a Copilot mode with a scoped mission, ownership and tool access (e.g. `cobol-archaeologist` is read-only, `module-rewriter` can edit and run tests). The `.github/prompts/*.prompt.md` files are the **actions** — small, single-purpose commands you invoke from Chat. Each prompt has an `agent:` in its frontmatter, so running the prompt automatically switches Copilot into the right persona for the job.
+**How the prompts and agents work together.** The `.github/agents/*.agent.md` files are the **personas** — each one is a custom agent with a scoped mission, ownership and tool access (e.g. `cobol-archaeologist` is read-only, `module-rewriter` can edit and run tests). The `.github/prompts/*.prompt.md` files are the **actions** — small, single-purpose commands you invoke from Chat. Each prompt has an `agent:` in its frontmatter, so running the prompt automatically switches Copilot into the right persona for the job.
 
 **How to invoke them.**
 
-- **In VS Code:** open Copilot Chat, type `/` and pick the prompt by name (they show up as `01-rediscovery-bootstrap`, `01-rediscovery-business-rules`, …). Copilot switches to the pinned agent, runs the prompt, produces the artifact, then stops.
-- **In the Copilot CLI:** prompt files are a VS Code Chat feature and are not exposed as slash commands. Pick the agent with `/agent` and paste the prompt body.
+- **In VS Code:** open a new chat and set **Session Target** to **Local**. The kit uses prompt files, and those run only in the Local harness. Type `/` and pick the prompt by name (they show up as `01-rediscovery-bootstrap`, `01-rediscovery-business-rules`, …). Copilot switches to the pinned agent, runs the prompt, produces the artifact, then stops.
+- **In the Copilot harness or the Copilot CLI:** prompt files are not loaded. The custom agents still work, so pick one from the agent picker (or with `/agent` in the CLI) and paste the prompt body. Or convert the kit's prompts to user-invoked skills with **Chat: Open Customizations** -> **Migrations** -> **Convert Prompt to Skills** (see [1.6](#16-agent-skills)). The conversion drops the `agent:` pin, so select the matching agent yourself before you invoke each skill.
 
 **The execution pattern is the same for every prompt.** Run one prompt → review the diff → commit → run the next. Each prompt writes to a named artifact under `docs/modernization/<phase>/`, cites `path/to/file:LINE` for anything specific, and stops. If it hits ambiguity, it appends to `docs/modernization/01-rediscovery/open-questions.md` instead of guessing. This is what makes the flow reviewable and controllable: every step is a small, git-diffable change against a persistent artifact — no big-bang generations, no invented behavior.
 
@@ -1093,6 +1235,12 @@ Not every task needs the strongest frontier model. **Auto mode** uses a routing 
 
 Chapter 1 covered each of these controls individually. Now we apply them as **context engineering** tools. For each control: *when* it loads, *what it costs*, *what* it is, *how* to use it, and a short exercise on the duck-emporium project.
 
+<div class="info" data-title="Which harness?">
+
+> Run the exercises in a VS Code chat with **Session Target** set to **Copilot** (the default), or in the Copilot CLI. They use the same runtime and the same customization files. The one exception is prompt files (6.3.7), which need the **Local** harness. The harness decides *which* files are discovered. If a control seems to have no effect, check the harness first, then the response's **References** and the **Agent Debug Logs**.
+
+</div>
+
 ### Setup
 
 ```bash
@@ -1107,7 +1255,7 @@ cd duck-emporium
 
 The base prompt and tool definitions injected by the harness before your conversation even starts.
 
-You cannot edit it, but you can inspect it. [Enable debug mode in VS Code to see logs.](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/troubleshoot-copilot/view-logs)
+You cannot edit it, but you can inspect it. In the Chat view, open the **...** menu and select **Show Agent Debug Logs** (or run **Developer: Open Agent Debug Logs**) to see what the harness sent to the model, including discovered instructions, skills and tools. See [Troubleshoot agents in VS Code](https://code.visualstudio.com/docs/agents/agent-troubleshooting/troubleshooting) and [View Copilot logs](https://docs.github.com/en/copilot/how-tos/troubleshoot-copilot/view-logs).
 
 ## 6.3.2 `copilot-instructions.md` / `AGENTS.md`
 **Loaded when:** every call (always-on);  
@@ -1125,7 +1273,7 @@ Persistent project-level instructions. `.github/copilot-instructions.md` (one pe
 
 #### Exercise 1: Create `copilot-instructions.md` for the duck-emporium project
 
-Open the GitHub Copilot chat window and type `/create-instructions`. (Or in the GitHub Copilot CLI just type: `Create me a copilot-instructions.md file for this project.`). When the agent is done, review the generated instructions. Verify its quality with the help of the rules of thumb above. 
+In a **Copilot** harness chat (or the Copilot CLI), ask: `Create a .github/copilot-instructions.md file for this project.` With the **Local** harness selected, you can use the `/init` (project-wide instructions) or `/create-instructions` shortcuts instead. They are not available in other harnesses. When the agent is done, review the generated instructions. Verify its quality with the help of the rules of thumb above. 
 
 If you want to have an example of how a decent `copilot-instructions.md` could look like: in the project root of this repo you can find a file for the whole workshop repository.
 
@@ -1141,11 +1289,11 @@ Even with good instructions, the agent will get things wrong. Context engineerin
 Every miss becomes a rule. Every rule is verifiable. Instructions evolve with the project.
 
 ## 6.3.4 Scoped instructions (`.instructions.md`)
-**Loaded when:** agent touches files matching the `applyTo` glob;  
+**Loaded when:** agent touches files matching the `applyTo` glob, or the `description` matches the task;  
 **Context cost:** on-demand (zero cost when not triggered);  
 **Use for:** file-type-specific rules that would bloat always-on instructions (e.g. `documentation.instructions.md`). 
 
-Files in `.github/instructions/*.instructions.md` with a frontmatter `applyTo` glob. They inject into context *only* when the agent reads or writes a matching file.
+Files in `.github/instructions/*.instructions.md` (searched recursively) with a frontmatter `applyTo` glob. They inject into context *only* when the agent creates or modifies a matching file. Add a specific `description` as well, and the agent can also load the file on demand when the current task matches, even if no file matches the glob yet. Personal scoped instructions for the Copilot harness live in `~/.copilot/instructions/`.
 
 Move detailed, file-specific conventions out of `copilot-instructions.md` into scoped files. One file per concern (testing, API routes, frontend, etc.).
 
@@ -1153,7 +1301,7 @@ As `AGENTS.md` work a little different, you can create an `AGENTS.md` file in ea
 
 <div class="tip" data-title="Good to know">
 
-> Different from `.instructions.md` files, `AGENTS.md` files are merged root-downward based on the file being edited. So if you have an `AGENTS.md` in the root and one in `frontend/`, when the agent edits a file in `frontend/` it will see the instructions from both the root and the frontend `AGENTS.md`. When it edits a file in `backend/` it will only see the instructions from the root `AGENTS.md`.
+> Different from `.instructions.md` files, `AGENTS.md` files are merged root-downward based on the file being edited. So if you have an `AGENTS.md` in the root and one in `frontend/`, when the agent edits a file in `frontend/` it will see the instructions from both the root and the frontend `AGENTS.md`. When it edits a file in `backend/` it will only see the instructions from the root `AGENTS.md`. This describes the **Copilot** harness. The **Local** harness only picks up nested `AGENTS.md` files when the experimental `chat.useNestedAgentsMdFiles` setting is enabled.
 
 </div>
 
@@ -1209,6 +1357,12 @@ A `SKILL.md` file in `.github/skills/<name>/` that describes a repeatable proced
 
 Wrap any multi-step workflow (run tests → read failures → fix → rerun) into a skill. The agent activates it automatically or you invoke it with `/<skill-name>`.
 
+Frontmatter fields let you tune the context trade-off:
+
+- `disable-model-invocation: true`: the description is no longer a trigger, and the skill loads only when you type `/<skill-name>`. Use this for workflows the agent must not start on its own, like the `sdd-*` skills in Chapter 2.
+- `user-invocable: false`: hides the skill from the `/` menu but keeps automatic loading. Use this for background know-how.
+- `context: fork` (experimental): runs the skill in its own subagent context, so its intermediate steps don't fill the main conversation (see 6.3.9).
+
 #### Exercise 4: Create a "Run and fix tests" skill for the duck-emporium project
 
 Create `duck-emporium/.github/skills/run-and-fix-tests/SKILL.md`:
@@ -1230,13 +1384,19 @@ description: Run the test suite and fix any failures. Use when asked to run test
 Ask the agent to make a risky change and verify it works. The skill will be selected automatically by the agentic harness.
 
 ## 6.3.7 Prompt files (`.prompt.md`)
-**Loaded when:** you invoke them (`/prompt-name`)
+**Loaded when:** you invoke them (`/prompt-name`), Local harness only
 **Context cost:** one-shot (only for that invocation)
 **Use for:** reusable, parameterized workflows triggered on demand
 
-Markdown files in `.github/prompts/` with optional frontmatter (mode, description, variables). They appear as slash commands in Chat.
+Markdown files in `.github/prompts/` with optional frontmatter (`description`, `name`, `argument-hint`, `agent`, `model`, `tools`). They appear as slash commands in Chat and can use `${input:name}` placeholders.
 
-Use for repeatable tasks where the *approach* is fixed and the *input* varies (e.g., `/sdd-spec` with a story ID). Unlike skills, they are user-initiated, not auto-detected.
+Use for repeatable tasks where the *approach* is fixed and the *input* varies. Unlike skills, they are user-initiated, not auto-detected.
+
+<div class="warning" data-title="Local harness only">
+
+> Prompt files are loaded **only by the Local harness**. For this exercise, open a new chat and set **Session Target** to **Local**. In the Copilot harness and the Copilot CLI, the equivalent is a skill with `disable-model-invocation: true` (as with the `sdd-*` skills in Chapter 2), invoked as `/review-endpoint quiz`. Try both and compare: the context cost is the same one-shot injection.
+
+</div>
 
 #### Exercise 5: Create an endpoint-review prompt for the duck-emporium project
 
@@ -1266,7 +1426,7 @@ Start a normal Chat request afterward with *"review the cart endpoint"* and comp
 
 [Model Context Protocol](https://modelcontextprotocol.io) servers expose tools the agent can call.
 
-- **In VS Code:** open the Extensions view and search for `@mcp` to browse the MCP gallery. Use `MCP: Add Server` from the Command Palette for a guided setup, or `MCP: List Servers` to inspect and manage installed servers. Workspace configuration lives in `.vscode/mcp.json`; run `MCP: Open User Configuration` for servers available across all workspaces.
+- **In VS Code:** open the Extensions view and search for `@mcp` to browse the MCP gallery. Use `MCP: Add Server` from the Command Palette for a guided setup, or `MCP: List Servers` to inspect and manage installed servers. You can also manage servers under **Chat: Open Customizations** -> **MCP Servers**. Copilot harness sessions read the portable format directly: `.mcp.json` at the workspace root and `~/.copilot/mcp-config.json` for your user, both with a top-level `mcpServers` key. The VS Code format (`.vscode/mcp.json` or your profile, top-level `servers`) still works. VS Code forwards eligible servers from it to Copilot sessions, except servers that rely on `${input:...}` prompts. To control which tools a Copilot session may use, open **Chat: Open Customizations** -> **Tools**. In a Local session, use **Configure Tools** in the chat input.
 - **In the Copilot CLI:** run `copilot mcp list` from your shell, or `/mcp show` inside an interactive Copilot session, to see configured servers and their tools. Add one with `copilot mcp add ...` or `/mcp add`. To browse the GitHub MCP Registry from an interactive session, enable experimental features with `/experimental on`, then use `/mcp search` or `/mcp search <query>`. User configuration lives in `~/.copilot/mcp-config.json`; project-level configuration can live in `.mcp.json` or `.github/mcp.json`.
 
 In general, keep the number of connected MCP servers small — each server's tool descriptions consume always-on context. Only connect what the current task needs.
@@ -1344,10 +1504,10 @@ Never store secrets, credentials, personal data, or temporary task details in me
 | --- | --- | --- | --- |
 | **System prompt & tools** | Every call | Fixed | Harness internals (not user-controlled) |
 | **`copilot-instructions.md` / `AGENTS.md`** | Every call | Proportional to file size | Non-negotiable project rules; keep small |
-| **Scoped instructions** (`.instructions.md`) | Matching files touched | On-demand | File-type-specific rules |
+| **Scoped instructions** (`.instructions.md`) | Matching files touched (or `description` matches) | On-demand | File-type-specific rules |
 | **Custom agents** (`.agent.md`) | When invoked | Replaces default if needed | Specialized workflows with restricted tools |
-| **Skills** (`SKILL.md`) | Task match detected | On-demand | Packaged multi-step capabilities |
-| **Prompt files** (`.prompt.md`) | When you invoke them | One-shot | Reusable parameterized workflows |
+| **Skills** (`SKILL.md`) | Task match detected, or `/name` | On-demand (description always) | Packaged multi-step capabilities; with `disable-model-invocation: true` the portable on-demand workflow |
+| **Prompt files** (`.prompt.md`) | When you invoke them (Local harness only) | One-shot | Reusable parameterized workflows in Local sessions |
 | **MCP tools** | Descriptions always; results on use | Descriptions fixed, results variable | External data and actions |
 | **Subagents** | When spawned | Separate window | Offload research, keep main session lean |
 | **Copilot Memory** | Every call | Small per entry | Persistent cross-session learnings |
@@ -1801,14 +1961,14 @@ Pick one. They build directly on the lab above.
 
 You (hopefully :D) have learned:
 
-- The full surface area of GitHub Copilot: IDE, CLI, instructions, prompts, custom agents, MCP.
+- The full surface area of GitHub Copilot: IDE, CLI, agent harnesses, instructions, prompts, custom agents, skills, MCP.
 - A repeatable, reviewable, agent-friendly development loop: **Spec → Plan → Tasks → Implement.**
 - How to apply that loop with a raw agent, and (optionally) with spec-kit as a dedicated tool.
 
 ## Where to go next
 
 - [GitHub Copilot docs](https://docs.github.com/en/copilot)
-- [Awesome Copilot](https://github.com/github/awesome-copilot) — community prompts, chatmodes, instructions
+- [Awesome Copilot](https://github.com/github/awesome-copilot) — community skills, agents, instructions, prompts
 - [spec-kit](https://github.com/github/spec-kit)
 - [Model Context Protocol](https://modelcontextprotocol.io)
 - [GitHub Copilot modernization](https://learn.microsoft.com/azure/developer/github-copilot-app-modernization/overview) and the [modernization agent / Modernize CLI](https://github.com/microsoft/modernize-cli)
@@ -1817,7 +1977,7 @@ You (hopefully :D) have learned:
 
 <div class="tip" data-title="One thing to try tomorrow">
 
-> Pick the next ticket in your backlog. Before writing a line of code, open Agent mode and run a `/sdd-spec` style prompt. Time-box it to 20 minutes. Notice how much sharper your understanding of the work becomes — that is the real win of SDD.
+> Pick the next ticket in your backlog. Before writing a line of code, open Agent mode and run your `/sdd-spec` skill from Chapter 2. Time-box it to 20 minutes. Notice how much sharper your understanding of the work becomes — that is the real win of SDD.
 
 </div>
 
