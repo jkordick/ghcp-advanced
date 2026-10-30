@@ -561,7 +561,13 @@ Rules:
 
 ### 2.2.3 Run the loop, story by story
 
-Open a new chat with **Session Target** set to **Copilot** (the default) and **Agent** selected in the agent picker. Type `/` and check that the four `sdd-*` skills show up. If they don't, check that each folder name matches its `name` field.
+<div class="warning" data-title="Make sure VS Code can see the skills">
+
+> Project skills are discovered from the folders open in your VS Code workspace, not from your terminal's current directory. Because `duck-emporium/` is its own Git repository inside your fork, add it as a workspace root: **File** → **Add Folder to Workspace…** → `duck-emporium`. Keep your fork's root open as well, so the agent can still read `user-stories/`.
+
+</div>
+
+Open a new chat with **Session Target** set to **Copilot** (the default) and **Agent** selected in the agent picker. Type `/` and check that the four `sdd-*` skills show up. If they don't, check that `duck-emporium` is a workspace folder and that each skill folder name matches its `name` field.
 
 Pick story 1 (`browse-catalog`) and invoke the first skill with the story id:
 
@@ -611,7 +617,7 @@ When the story is done, move on to story 2 (`duck-detail`), which builds on stor
 
 ## 2.3 SDD in the Copilot CLI
 
-Everything above works in the GitHub Copilot CLI too. The CLI runs the same Copilot runtime as the **Copilot** harness in VS Code and reads the same `.github/skills/` folder and `AGENTS.md`. Start `copilot` inside `duck-emporium/`, run `/skills list` to confirm the four `sdd-*` skills are loaded, then drive the loop exactly as before:
+Everything above works in the GitHub Copilot CLI too. The CLI runs the same Copilot runtime as the **Copilot** harness in VS Code and reads the same `.github/skills/` folder and `AGENTS.md`. Start `copilot` inside `duck-emporium/`, run `/add-dir ..` so the agent can read `../user-stories/`, run `/skills list` to confirm the four `sdd-*` skills are loaded, then drive the loop exactly as before:
 
 ```text
 /sdd-spec browse-catalog
@@ -1992,7 +1998,8 @@ Happy spec-driving! 🚀
 | Tech | Use when… | Concrete example |
 | --- | --- | --- |
 | copilot-instructions.md / AGENTS.md | You want **every agent interaction** in this repo to follow the **same rules**. Think: architecture, naming, style, forbidden patterns. | "This repo uses hexagonal architecture. Never put business logic in controllers. All prices in EUR cents." |
-| Agent Skills | You **know** that your agent needs to do something **defined** beyond reading and writing code: run tests, call an API, query a database 🗄️, fetch context from an external system. | Give the review agent a skill to run `npm test` and include results in its assessment. |
+| Agent Skills | You **know** that your agent needs to do something **defined** beyond reading and writing code: run tests, call an API, query a database 🗄️, fetch context from an external system. With `disable-model-invocation: true` it becomes a reusable workflow that you start yourself with `/name`, and it works in the Copilot harness, the Local harness and the CLI. | Give the review agent a skill to run `npm test` and include results in its assessment. Or run `/sdd-spec browse-catalog` from Chapter 2. |
+| Prompt Files | You want a reusable, parameterized prompt in a VS Code **Local** harness session (not loaded by the Copilot harness or the CLI). | `/review-endpoint` that asks for the endpoint via `${input:endpoint}`. |
 | Custom Agents | You have a recurring task that needs a specific persona, toolset, or workflow. **How to solve the task is deliberately open.** | A `@code-reviewer` agent that checks every change against your security checklist and domain rules. The kind of changes are the **undefined variable** in this scenario. |
 | Spec-Driven Development | You want the **one agent** to implement a feature from a structured definition: requirements, acceptance criteria, constraints up front. **For more complex scenarios.** spec-kit is one ready-made way to run this loop. | A spec for "loyalty points": earn 1 point per EUR, redeem at 100 points = 5 EUR discount. Spec defines the domain model, API contract, and edge cases before the agent writes a line of code. |
 | Squad | A task spans multiple concerns (API, database 🗄️, tests, docs) and you want coordinated work across **multiple agents**. **For even more complex scenarios.** | Implementing the loyalty feature end to end: one agent handles the domain logic, another the migration, another the test suite. |
