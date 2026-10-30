@@ -443,7 +443,7 @@ Add a minimal `AGENTS.md` in the `duck-emporium/` folder:
 - Use `node:`-prefixed built-ins.
 - Tests live next to source as `*.test.ts`, run with `vitest`.
 - User stories live in `../user-stories/`. Specs go in `specs/<story-id>/`.
-- Never edit `user-stories/**`.
+- Never edit anything under `../user-stories/`.
 - Only edit files under `specs/**` when invoked through an `sdd-*` skill.
 - Follow the workflow in `.github/skills/sdd-*/SKILL.md`.
 - Payments are MOCKED. Never integrate a real payment provider.
@@ -651,17 +651,17 @@ It ships a `specify` CLI that scaffolds the `specs/` layout and the SDD steps fo
 
 Follow the installation instructions in the [spec-kit README.md](https://github.com/github/spec-kit#-get-started).
 
-In the root of the project:
+Use a fresh folder next to Chapter 2's `duck-emporium/`, so spec-kit's `specs/` output doesn't mix with your hand-rolled specs. From the root of your fork:
 
 ```bash
-specify init duck-emporium --integration copilot
-## choose between bash or powershell
-cd duck-emporium
+specify init duck-emporium-speckit --integration copilot
+## choose between bash or powershell when prompted
+cd duck-emporium-speckit
 ```
 
-<div class="warning" data-title="Workaround">
+<div class="warning" data-title="Make sure VS Code can see the skills">
 
-> `specify init duck-emporium` creates a nested layout (a `duck-emporium/` folder containing `.specify/`, `.github/`, scripts, etc.). For the agent to pick up the skills and templates in this workshop's setup, cut those folders out of `duck-emporium/` and paste them at the repository root, so they are easily accessible. Alternatively, run `specify init .` from inside an empty target folder to avoid the nesting entirely.
+> `specify init` creates `duck-emporium-speckit/` with its own `.specify/` and `.github/skills/` folders. As in Chapter 2, VS Code only discovers project skills in workspace folders: **File** → **Add Folder to Workspace…** → `duck-emporium-speckit`, and keep your fork's root open so the agent can read `user-stories/`. In the Copilot CLI, start `copilot` inside `duck-emporium-speckit/` and run `/add-dir ..`.
 
 </div>
 
